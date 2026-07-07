@@ -1393,6 +1393,18 @@ select.geo-input option, select.geo-select option {
     box-sizing: border-box !important;
   }
 
+  /* Password show/hide icon buttons sit absolutely inside the input wrapper —
+     they must NOT inherit the full-width button rule above, or they end up
+     stretching over the entire input and blocking taps to it. */
+  .pass-toggle-btn {
+    position: absolute !important;
+    width: auto !important;
+    min-height: unset !important;
+    padding: 4px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
   /* Chips & badges */
   .chip {
     font-size: 0.85rem !important;

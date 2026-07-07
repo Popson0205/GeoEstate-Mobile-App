@@ -2083,7 +2083,7 @@ YPE html>
             onfocus="this.style.boxShadow='inset 0 0 0 2px var(--geo-green-400)'"
             onblur="this.style.boxShadow='inset 0 0 0 1px var(--border-default)'"
             onkeydown="if(event.key==='Enter')doLogin()">
-          <button onclick="togglePassVis('login-pass-field',this)"
+          <button type="button" class="pass-toggle-btn" onclick="togglePassVis('login-pass-field',this)"
             style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-muted)">👁</button>
         </div>
       </div>
@@ -2159,7 +2159,7 @@ YPE html>
         <div style="position:relative">
           <input id="reg-pass" type="password" placeholder="Min. 8 characters"
             style="width:100%;padding:10px 40px 10px 12px;border:none;border-radius:9px;background:var(--surface-secondary);color:var(--text-primary);font-family:var(--font-sans);font-size:.88rem;outline:none;box-shadow:inset 0 0 0 1.5px var(--border-default);box-sizing:border-box">
-          <button onclick="togglePassVis('reg-pass',this)" type="button"
+          <button onclick="togglePassVis('reg-pass',this)" type="button" class="pass-toggle-btn"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.82rem;padding:4px">👁</button>
         </div>
       </div>
