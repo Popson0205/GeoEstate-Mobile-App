@@ -343,6 +343,7 @@ body {
 @media (max-width: 600px) {
   .grid-3, .grid-4, .grid-2 { grid-template-columns: 1fr; }
   .geo-nav-links { display: none; }
+  .geo-hamburger { display: flex; }
   .geo-section { padding: 48px var(--space-4); }
 }
 
@@ -1222,6 +1223,11 @@ select.geo-input option, select.geo-select option {
   
   /* MAP PAGE FIXES */
   .map-container {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     width: 100% !important;
     max-width: 100vw !important;
   }
@@ -1292,15 +1298,10 @@ select.geo-input option, select.geo-select option {
   }
 
   .geo-nav-links { display: none !important; }
+  .geo-hamburger { display: flex !important; }
   .geo-nav-cta .btn-secondary,
   .geo-nav-cta .btn-primary { display: none; }
   .geo-nav-cta .theme-toggle { display: flex; }
-  /* Hide admin link from nav on mobile — it's in the drawer */
-  .geo-nav-cta a[title="Admin Portal"],
-  .geo-nav-cta a[title="Owner Portal"],
-  .geo-nav-cta a[title="Sales Portal"] { display: none; }
-  /* Hide the whole portal group div on mobile */
-  .geo-nav-cta > div:last-of-type { display: none; }
 
   /* Hero */
   .geo-hero { min-height: 100svh; padding: calc(var(--nav-height) + 24px) 20px 48px; }
