@@ -46,6 +46,7 @@ html, body {
 
   /* Nav height */
   --nav-height: 72px;
+  --nav-height-safe: calc(72px + env(safe-area-inset-top, 0px));
 }
 
 html.dark {
@@ -74,13 +75,16 @@ body {
 .geo-nav {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: var(--surface-primary);
   box-shadow: var(--shadow-lifted-card);
   z-index: 1000;
   display: flex;
   align-items: center;
-  padding: 0 var(--space-8);
+  box-sizing: border-box;
+  padding-left: var(--space-8);
+  padding-right: var(--space-8);
 }
 .geo-nav-inner {
   max-width: 1440px;
@@ -352,15 +356,44 @@ body {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding-top: var(--nav-height);
-  background: linear-gradient(160deg, var(--geo-green-dark) 0%, #1a3d25 50%, #0d2a1a 100%);
+  padding-top: var(--nav-height-safe);
+  background: linear-gradient(160deg, var(--geo-green-dark) 0%, var(--geo-green-800) 45%, var(--geo-green-900) 100%);
   position: relative;
   overflow: hidden;
 }
 .geo-hero::before {
   content: '';
   position: absolute; inset: 0;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Brand gradient orbs — replaces the previous photo slideshow */
+.geo-hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+  z-index: 0;
+}
+.geo-hero-orb-1 {
+  width: 560px; height: 560px;
+  background: radial-gradient(circle, rgba(61,179,116,0.35) 0%, transparent 70%);
+  top: -140px; right: -60px;
+  animation: heroOrbDrift1 16s ease-in-out infinite;
+}
+.geo-hero-orb-2 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(110,201,154,0.22) 0%, transparent 70%);
+  bottom: -100px; left: -80px;
+  animation: heroOrbDrift2 20s ease-in-out infinite;
+}
+@keyframes heroOrbDrift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(-30px, 20px) scale(1.08); }
+}
+@keyframes heroOrbDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(24px, -18px) scale(1.05); }
 }
 .geo-hero-content {
   max-width: 1280px;
@@ -660,12 +693,12 @@ select.geo-input option, select.geo-select option {
 .step-line.done { background: var(--geo-green-400); }
 
 /* ---- MAP PAGE ---- */
-#map { width: 100%; height: calc(100vh - var(--nav-height)); }
+#map { width: 100%; height: calc(100vh - var(--nav-height-safe)); }
 .map-sidebar {
   position: fixed;
-  top: var(--nav-height); left: 0;
+  top: var(--nav-height-safe); left: 0;
   width: 340px;
-  height: calc(100vh - var(--nav-height));
+  height: calc(100vh - var(--nav-height-safe));
   background: var(--surface-primary);
   box-shadow: 2px 0 12px rgba(0,0,0,0.08);
   overflow-y: auto;
@@ -733,7 +766,7 @@ select.geo-input option, select.geo-select option {
 /* ---- PAGE WRAPPER ---- */
 .page { display: none; }
 .page.active { display: block; }
-.page-padded { padding-top: var(--nav-height); }
+.page-padded { padding-top: var(--nav-height-safe); }
 
 /* ---- MISC ---- */
 .text-center { text-align: center; }
@@ -980,7 +1013,7 @@ select.geo-input option, select.geo-select option {
 .geo-mobile-nav {
   display: block;
   position: fixed;
-  top: var(--nav-height);
+  top: var(--nav-height-safe);
   left: 0;
   right: 0;
   bottom: 0;
@@ -1065,33 +1098,12 @@ select.geo-input option, select.geo-select option {
   .geo-hero {
     width: 100% !important;
     max-width: 100vw !important;
-    padding: calc(var(--nav-height) + 16px) 16px 32px !important;
+    padding: calc(var(--nav-height-safe) + 16px) 16px 32px !important;
     overflow: hidden !important;
   }
   
-  #hero-slideshow {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  .hero-slide {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  #hero-dots {
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 0 16px !important;
-    box-sizing: border-box !important;
-  }
-  
-  #hero-label {
-    left: 16px !important;
-    right: 16px !important;
-    max-width: calc(100% - 32px) !important;
+  .geo-hero-orb {
+    display: none;
   }
   
   .hero-float-card {
@@ -1304,7 +1316,7 @@ select.geo-input option, select.geo-select option {
   .geo-nav-cta .theme-toggle { display: flex; }
 
   /* Hero */
-  .geo-hero { min-height: 100svh; padding: calc(var(--nav-height) + 24px) 20px 48px; }
+  .geo-hero { min-height: 100svh; padding: calc(var(--nav-height-safe) + 24px) 20px 48px; }
   .geo-hero h1 { font-size: 2rem; line-height: 1.2; }
   .geo-hero-sub { font-size: 1rem; }
   .geo-hero-content { text-align: center; }
@@ -1352,7 +1364,7 @@ select.geo-input option, select.geo-select option {
   .geo-form-grid { grid-template-columns: 1fr !important; }
 
   /* Page padding */
-  .page-padded { padding-top: var(--nav-height); }
+  .page-padded { padding-top: var(--nav-height-safe); }
   [style*="max-width:1100px"], [style*="max-width:1280px"] { padding-left: 16px !important; padding-right: 16px !important; }
 
   /* ═══ FORM ELEMENTS & INPUT FIXES ═══ */
@@ -1469,7 +1481,7 @@ select.geo-input option, select.geo-select option {
   .geo-team-grid { grid-template-columns: 1fr !important; }
 
   /* Tighten padding on very small screens */
-  .geo-hero { padding: calc(var(--nav-height) + 16px) 16px 32px !important; }
+  .geo-hero { padding: calc(var(--nav-height-safe) + 16px) 16px 32px !important; }
   .geo-section { padding: 32px 16px !important; }
   .geo-footer-inner { padding: 32px 16px 24px !important; }
 

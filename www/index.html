@@ -606,39 +606,12 @@ YPE html>
   <section class="geo-hero">
 
     <!-- ====================================================
-         FULL-SCREEN PROPERTY PHOTO SLIDESHOW
-         Real Nigerian-style luxury & residential properties
-         Ken Burns pan+zoom on each slide
+         BRAND GRADIENT HERO BACKGROUND
+         Solid brand-color gradient with subtle geometric pattern
+         (replaces prior full-screen photo slideshow)
          ==================================================== -->
-    <div id="hero-slideshow" aria-hidden="true">
-      <!-- Slide 1 — Luxury Lagos apartment exterior -->
-      <div class="hero-slide active" style="background-image:url('https://images.unsplash.com/photo-1613977257363-707ba9348227?w=1600&q=85&auto=format&fit=crop')"></div>
-      <!-- Slide 2 — Modern residential house -->
-      <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1600&q=85&auto=format&fit=crop')"></div>
-      <!-- Slide 3 — Apartment building pool view -->
-      <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&q=85&auto=format&fit=crop')"></div>
-      <!-- Slide 4 — Contemporary detached villa -->
-      <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=85&auto=format&fit=crop')"></div>
-      <!-- Slide 5 — Aerial estate view -->
-      <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1600&q=85&auto=format&fit=crop')"></div>
-      <!-- Slide 6 — Modern city apartment block -->
-      <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1600&q=85&auto=format&fit=crop')"></div>
-    </div>
-
-    <!-- Slideshow dot indicators -->
-    <div id="hero-dots" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3">
-      <button class="hero-dot active" onclick="goToSlide(0)" aria-label="Slide 1"></button>
-      <button class="hero-dot" onclick="goToSlide(1)" aria-label="Slide 2"></button>
-      <button class="hero-dot" onclick="goToSlide(2)" aria-label="Slide 3"></button>
-      <button class="hero-dot" onclick="goToSlide(3)" aria-label="Slide 4"></button>
-      <button class="hero-dot" onclick="goToSlide(4)" aria-label="Slide 5"></button>
-      <button class="hero-dot" onclick="goToSlide(5)" aria-label="Slide 6"></button>
-    </div>
-
-    <!-- Current property label (bottom-left) -->
-    <div id="hero-label" style="position:absolute;bottom:32px;left:40px;z-index:3;display:flex;align-items:center;gap:10px">
-      <span id="hero-label-text" style="background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);color:rgba(255,255,255,0.85);border-radius:999px;padding:5px 14px;font-size:0.78rem;font-weight:600;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.15)">📍 Lekki Phase 1, Lagos</span>
-    </div>
+    <div class="geo-hero-orb geo-hero-orb-1" aria-hidden="true"></div>
+    <div class="geo-hero-orb geo-hero-orb-2" aria-hidden="true"></div>
 
     <!-- Floating property cards (z-index above overlay) -->
     <div class="hero-float-card hero-float-card-1">
@@ -661,83 +634,7 @@ YPE html>
     <style>
       @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-      /* Slideshow container */
-      #hero-slideshow {
-        position: absolute;
-        inset: 0;
-        z-index: 0;
-      }
-
-      /* Each slide */
-      .hero-slide {
-        position: absolute;
-        inset: 0;
-        background-size: cover;
-        background-position: center;
-        opacity: 0;
-        transition: opacity 1.4s ease-in-out;
-        will-change: transform, opacity;
-      }
-      .hero-slide.active {
-        opacity: 1;
-        animation: kenBurns 8s ease-in-out forwards;
-      }
-      .hero-slide.prev {
-        opacity: 0;
-        transition: opacity 1.4s ease-in-out;
-      }
-
-      /* Ken Burns — 6 variants, each slide gets a different one */
-      .hero-slide:nth-child(1).active { animation: kenBurns1 8s ease-in-out forwards; }
-      .hero-slide:nth-child(2).active { animation: kenBurns2 8s ease-in-out forwards; }
-      .hero-slide:nth-child(3).active { animation: kenBurns3 8s ease-in-out forwards; }
-      .hero-slide:nth-child(4).active { animation: kenBurns4 8s ease-in-out forwards; }
-      .hero-slide:nth-child(5).active { animation: kenBurns5 8s ease-in-out forwards; }
-      .hero-slide:nth-child(6).active { animation: kenBurns6 8s ease-in-out forwards; }
-
-      @keyframes kenBurns1 {
-        from { transform: scale(1.0) translate(0, 0); }
-        to   { transform: scale(1.08) translate(-1.5%, -1%); }
-      }
-      @keyframes kenBurns2 {
-        from { transform: scale(1.08) translate(-2%, 0); }
-        to   { transform: scale(1.0) translate(0, -1.5%); }
-      }
-      @keyframes kenBurns3 {
-        from { transform: scale(1.0) translate(1.5%, 1%); }
-        to   { transform: scale(1.1) translate(-1%, -0.5%); }
-      }
-      @keyframes kenBurns4 {
-        from { transform: scale(1.1) translate(0, -1%); }
-        to   { transform: scale(1.0) translate(1.5%, 1%); }
-      }
-      @keyframes kenBurns5 {
-        from { transform: scale(1.0) translate(-1%, 1.5%); }
-        to   { transform: scale(1.08) translate(1%, -1%); }
-      }
-      @keyframes kenBurns6 {
-        from { transform: scale(1.06) translate(1%, 0); }
-        to   { transform: scale(1.0) translate(-1.5%, 1%); }
-      }
-
-      /* Slideshow dots */
-      .hero-dot {
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.35);
-        border: none;
-        cursor: pointer;
-        padding: 0;
-        transition: all 0.3s ease;
-      }
-      .hero-dot.active {
-        background: white;
-        width: 24px;
-        border-radius: 4px;
-      }
-      .hero-dot:hover { background: rgba(255,255,255,0.7); }
-
-      /* Ensure hero content sits above overlay (z-index 1) */
+      /* Ensure hero content sits above orb background */
       .geo-hero-content { position: relative; z-index: 2; }
       .hero-float-card  { z-index: 3; }
     </style>
@@ -3398,8 +3295,6 @@ document.addEventListener('click', function(e) {
   if (e.target.id === 'payment-success-modal') closeSuccessModal();
 });
 
-// ── HERO SLIDESHOW ──────────────────────────────────────────────────────────
-const slideLabels = ['📍 Lekki Phase 1, Lagos','📍 Maitama, Abuja','📍 Victoria Island, Lagos','📍 GRA, Port Harcourt','📍 Asokoro, Abuja','📍 Ikeja GRA, Lagos'];
 // ── Admin navigation helper (used by header links) ────────────────────────
 function goToAdmin(e) {
   if (e) e.preventDefault();
@@ -3823,27 +3718,6 @@ function goToAdmin(e) {
   };
   window.showPage._geoPatched = true;
 })();
-
-let currentSlide = 0;
-let slideshowTimer = null;
-function goToSlide(n) {
-  const slides = document.querySelectorAll('.hero-slide');
-  const dots   = document.querySelectorAll('.hero-dot');
-  if (!slides.length) return;
-  slides[currentSlide].classList.remove('active');
-  slides[currentSlide].classList.add('prev');
-  dots[currentSlide].classList.remove('active');
-  setTimeout(() => {
-    slides[currentSlide].classList.remove('prev');
-    currentSlide = n;
-    slides[currentSlide].classList.add('active');
-    dots[currentSlide].classList.add('active');
-    const label = document.getElementById('hero-label-text');
-    if (label) label.textContent = slideLabels[currentSlide];
-  }, 80);
-}
-function nextSlide() { const total = document.querySelectorAll('.hero-slide').length; goToSlide((currentSlide + 1) % total); }
-function startSlideshow() { slideshowTimer = setInterval(nextSlide, 6000); }
 
 // ── ADMIN GATEWAY ───────────────────────────────────────────────────────────
 
@@ -7888,6 +7762,8 @@ document.addEventListener('DOMContentLoaded', function() {
   populateLGA('fp-state',    'fp-lga');
   populateLGA('buy-state',   'buy-lga');
   populateLGA('lease-state', 'lease-lga');
+});
+</script>
 
 <!-- ── Capacitor native bridge (Android app shell) ── -->
 <script>
