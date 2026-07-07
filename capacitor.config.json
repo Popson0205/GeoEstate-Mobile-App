@@ -1,0 +1,30 @@
+{
+  "appId": "ng.com.geoestate.app",
+  "appName": "GeoEstate",
+  "webDir": "www",
+  "backgroundColor": "#0d3d22",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0d3d22"
+  },
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "api.geoestate.com.ng",
+      "geoestate.com.ng",
+      "*.geoestate.com.ng"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#0d3d22",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0d3d22"
+    }
+  }
+}

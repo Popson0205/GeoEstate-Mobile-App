@@ -1,0 +1,1536 @@
+
+/* ── Mobile Viewport Fixes ─────────────────────────────── */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+/* ============================================================
+   GEOESTATE BRAND THEME — extends Obvious design system
+   Primary: Forest Green #1a6b3c | Dark: #0d1f15
+   Trust palette: green (verified), amber (pending), red (flagged)
+   ============================================================ */
+
+:root {
+  /* GeoEstate brand colors */
+  --geo-green-50:  #f0faf4;
+  --geo-green-100: #d9f2e3;
+  --geo-green-200: #a8dfc0;
+  --geo-green-300: #6ec99a;
+  --geo-green-400: #3db374;
+  --geo-green-500: #1a9c55;
+  --geo-green-600: #1a6b3c;
+  --geo-green-700: #145430;
+  --geo-green-800: #0d3d22;
+  --geo-green-900: #071f12;
+  --geo-green-dark: #0d1f15;
+
+  --geo-amber-400: #f59e0b;
+  --geo-amber-600: #d97706;
+
+  --geo-gold: #c9a227;
+
+  /* Override primary button with brand green */
+  --button-primary-bg: var(--geo-green-600);
+  --button-primary-fg: #ffffff;
+  --button-primary-hover: var(--geo-green-700);
+
+  /* Map */
+  --geo-map-bg: #e8f0e9;
+
+  /* Verified badge */
+  --verified-bg: var(--geo-green-50);
+  --verified-fg: var(--geo-green-700);
+  --verified-border: var(--geo-green-300);
+
+  /* Nav height */
+  --nav-height: 72px;
+}
+
+html.dark {
+  --geo-green-50:  #071f12;
+  --geo-green-100: #0d3d22;
+  --geo-green-200: #145430;
+  --geo-green-300: #1a6b3c;
+  --geo-green-400: #1a9c55;
+  --geo-green-500: #3db374;
+  --geo-green-600: #6ec99a;
+  --verified-bg: #0d3d22;
+  --verified-fg: #6ec99a;
+  --verified-border: #1a6b3c;
+}
+
+/* ---- Global resets ---- */
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--surface-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* ---- NAV ---- */
+.geo-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-height);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-lifted-card);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-8);
+}
+.geo-nav-inner {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.geo-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--geo-green-600);
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+  margin-right: 2.5rem;   /* ← hard gap between logo and first nav link */
+}
+.geo-logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.geo-nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  list-style: none;
+  flex: 1;
+  flex-wrap: nowrap;
+}
+.geo-nav-links a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+.geo-nav-links a:hover { color: var(--geo-green-600); }
+.geo-nav-links a.active { color: var(--geo-green-600); }
+.geo-nav-cta { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; margin-left: auto; }
+
+/* ---- BUTTONS ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border: none;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  text-decoration: none;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary {
+  background: var(--geo-green-600);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--geo-green-700); }
+.btn-secondary {
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lifted-card);
+}
+.btn-secondary:hover { background: var(--surface-hover); }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover { background: var(--surface-hover); }
+.btn-lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: 1rem;
+  border-radius: var(--radius-lg);
+}
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8rem;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--geo-green-600);
+  box-shadow: inset 0 0 0 1.5px var(--geo-green-400);
+}
+.btn-outline:hover { background: var(--geo-green-50); }
+
+/* ---- VERIFIED BADGE ---- */
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--verified-bg);
+  color: var(--verified-fg);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--verified-border);
+}
+.verified-badge::before {
+  content: '✓';
+  font-weight: 800;
+}
+.pending-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #fffbeb; color: #92400e;
+  border-radius: 999px; padding: 3px 10px;
+  font-size: 0.75rem; font-weight: 600;
+  box-shadow: inset 0 0 0 1px #f59e0b;
+}
+
+/* ---- CARDS ---- */
+.geo-card {
+  background: var(--surface-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lifted-card);
+  overflow: hidden;
+  transition: transform var(--transition-medium), box-shadow var(--transition-medium);
+}
+.geo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06);
+}
+.geo-card-img {
+  width: 100%; height: 200px;
+  object-fit: cover;
+  background: linear-gradient(135deg, var(--geo-green-100), var(--geo-green-200));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem;
+  position: relative;
+}
+.geo-card-type-badge {
+  position: absolute; top: var(--space-3); left: var(--space-3);
+  background: white; color: var(--geo-green-700);
+  border-radius: var(--radius-sm); padding: 2px 8px;
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: var(--shadow-lifted-card);
+}
+.geo-card-body { padding: var(--space-4); }
+.geo-card-price {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--geo-green-600);
+  margin-bottom: var(--space-1);
+}
+.geo-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+.geo-card-location {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+  display: flex; align-items: center; gap: 4px;
+  margin-bottom: var(--space-3);
+}
+.geo-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ---- SECTIONS ---- */
+.geo-section {
+  padding: 80px var(--space-8);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.geo-section-full {
+  padding: 80px var(--space-8);
+}
+.section-label {
+  display: inline-block;
+  background: var(--geo-green-50);
+  color: var(--geo-green-600);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-4);
+  box-shadow: inset 0 0 0 1px var(--geo-green-200);
+}
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+}
+.section-subtitle {
+  font-size: 1.05rem;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  max-width: 560px;
+}
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-5); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-6); }
+
+/* ── Breakpoint: very wide but still constrained (≤1440px) — the nav-inner
+   cap (1280px) plus 10 full-text links + logo + CTA genuinely doesn't fit
+   even on a full desktop monitor once any OS/browser scaling is applied.
+   Shed the two lowest-priority links first (still reachable via footer /
+   mobile drawer) before anything gets pushed off-screen. ── */
+@media (max-width: 1440px) {
+  #nav-team, #nav-contact { display: none; }
+}
+
+/* ── Breakpoint: wide tablet (≤1200px) — tighten nav links ── */
+@media (max-width: 1200px) {
+  .geo-nav-links {
+    gap: 0.75rem;
+  }
+  .geo-nav-links a {
+    font-size: 0.92rem;
+  }
+  .geo-logo {
+    margin-right: 1.5rem;
+  }
+  .geo-nav { padding: 0 var(--space-4); }
+}
+
+/* ── Breakpoint: narrow tablet (≤1024px) — further compress ── */
+@media (max-width: 1024px) {
+  .geo-nav-links {
+    gap: 0.5rem;
+  }
+  .geo-nav-links a {
+    font-size: 0.88rem;
+  }
+  .geo-logo {
+    margin-right: 1rem;
+    font-size: 1.1rem;
+  }
+  .geo-logo svg {
+    width: 28px;
+    height: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .grid-3, .grid-4, .grid-2 { grid-template-columns: 1fr; }
+  .geo-nav-links { display: none; }
+  .geo-section { padding: 48px var(--space-4); }
+}
+
+/* ---- HERO ---- */
+.geo-hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: var(--nav-height);
+  background: linear-gradient(160deg, var(--geo-green-dark) 0%, #1a3d25 50%, #0d2a1a 100%);
+  position: relative;
+  overflow: hidden;
+}
+.geo-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.geo-hero-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-8);
+  position: relative;
+  z-index: 1;
+}
+.geo-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: var(--space-6);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.geo-hero h1 {
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: #ffffff;
+  margin-bottom: var(--space-6);
+  max-width: 700px;
+}
+.geo-hero h1 span {
+  color: var(--geo-green-400);
+}
+.geo-hero-sub {
+  font-size: 1.15rem;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.6;
+  max-width: 520px;
+  margin-bottom: var(--space-8);
+}
+.geo-search-bar {
+  display: flex;
+  background: white;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  max-width: 680px;
+  margin-bottom: var(--space-8);
+}
+.geo-search-bar select,
+.geo-search-bar input {
+  border: none;
+  outline: none;
+  padding: var(--space-4) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  background: transparent;
+  color: #1a1a1a;
+}
+.geo-search-bar select {
+  border-right: 1px solid #e5e5e5;
+  font-weight: 600;
+  min-width: 130px;
+  cursor: pointer;
+}
+.geo-search-bar input { flex: 1; }
+.geo-search-bar button {
+  background: var(--geo-green-600);
+  color: white;
+  border: none;
+  padding: var(--space-3) var(--space-6);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+.geo-search-bar button:hover { background: var(--geo-green-700); }
+.geo-hero-stats {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+.hero-stat-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.03em;
+}
+.hero-stat-label {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
+}
+
+/* ---- TRUST BANNER ---- */
+.geo-trust-banner {
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-lifted-card);
+  padding: var(--space-6) var(--space-8);
+}
+.geo-trust-banner-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.trust-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.trust-icon.green { background: var(--geo-green-50); }
+.trust-icon.blue { background: #eff6ff; }
+.trust-icon.amber { background: #fffbeb; }
+.trust-icon.purple { background: #f5f3ff; }
+
+/* ---- HOW IT WORKS ---- */
+.how-step {
+  background: var(--surface-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-lifted-card);
+  position: relative;
+}
+.how-step-number {
+  width: 40px; height: 40px;
+  background: var(--geo-green-600);
+  color: white;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  margin-bottom: var(--space-4);
+}
+.how-step-icon { font-size: 1.8rem; margin-bottom: var(--space-3); }
+.how-step h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+.how-step p {
+  font-size: 0.88rem;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+.step-connector {
+  position: absolute;
+  top: 50%; right: -20px;
+  transform: translateY(-50%);
+  color: var(--geo-green-300);
+  font-size: 1.2rem;
+  z-index: 1;
+}
+
+/* ---- TRANSACTION TYPE TABS ---- */
+.txn-tabs {
+  display: flex;
+  gap: var(--space-2);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-1);
+  margin-bottom: var(--space-8);
+  width: fit-content;
+}
+.txn-tab {
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  transition: all var(--transition-fast);
+}
+.txn-tab.active {
+  background: var(--surface-primary);
+  color: var(--geo-green-600);
+  box-shadow: var(--shadow-lifted-card);
+}
+
+/* ---- FOOTER ---- */
+.geo-footer {
+  background: var(--geo-green-dark);
+  color: rgba(255,255,255,0.7);
+  padding: 64px var(--space-8) var(--space-8);
+}
+.geo-footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.geo-footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--space-8);
+  margin-bottom: 48px;
+}
+.geo-footer-brand { color: white; font-weight: 800; font-size: 1.2rem; margin-bottom: var(--space-3); }
+.geo-footer-desc { font-size: 0.85rem; line-height: 1.7; margin-bottom: var(--space-4); }
+.geo-footer-col h4 { color: white; font-size: 0.85rem; font-weight: 700; margin-bottom: var(--space-4); letter-spacing: 0.04em; text-transform: uppercase; }
+.geo-footer-col ul { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.geo-footer-col ul a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 0.85rem; transition: color var(--transition-fast); }
+.geo-footer-col ul a:hover { color: white; }
+.geo-footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: var(--space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.geo-badges { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.geo-badge-item {
+  background: rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+
+/* ---- FORMS ---- */
+.geo-form-group { margin-bottom: var(--space-5); }
+.geo-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+.geo-input, .geo-select, .geo-textarea {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-lifted-card);
+  transition: box-shadow var(--transition-fast);
+  outline: none;
+}
+.geo-input:focus, .geo-select:focus, .geo-textarea:focus {
+  box-shadow: 0 0 0 2px var(--geo-green-400), var(--shadow-lifted-card);
+}
+/* The closed select box uses the theme's surface/text colors, but the
+   native dropdown option list doesn't inherit those everywhere — force a
+   dark background behind the (white) option text so it stays readable. */
+select.geo-input, select.geo-select {
+  color-scheme: dark;
+}
+select.geo-input option, select.geo-select option {
+  background-color: #111827;
+  color: #ffffff;
+}
+.geo-textarea { min-height: 100px; resize: vertical; }
+
+/* ---- STEP PROGRESS ---- */
+.step-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+.step-dot {
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.step-dot.done { background: var(--geo-green-600); color: white; }
+.step-dot.active { background: var(--geo-green-100); color: var(--geo-green-700); box-shadow: 0 0 0 3px var(--geo-green-200); }
+.step-dot.todo { background: var(--surface-secondary); color: var(--text-muted); }
+.step-line { flex: 1; height: 2px; background: var(--border-subtle); }
+.step-line.done { background: var(--geo-green-400); }
+
+/* ---- MAP PAGE ---- */
+#map { width: 100%; height: calc(100vh - var(--nav-height)); }
+.map-sidebar {
+  position: fixed;
+  top: var(--nav-height); left: 0;
+  width: 340px;
+  height: calc(100vh - var(--nav-height));
+  background: var(--surface-primary);
+  box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+  overflow-y: auto;
+  z-index: 500;
+  padding: var(--space-5);
+}
+.map-main { margin-left: 340px; }
+.map-popup {
+  font-family: var(--font-sans);
+  min-width: 200px;
+}
+.map-popup-price { font-size: 1.1rem; font-weight: 800; color: var(--geo-green-600); }
+.map-popup-title { font-size: 0.9rem; font-weight: 600; margin: 4px 0; }
+.map-popup-loc { font-size: 0.8rem; color: #666; margin-bottom: 8px; }
+
+/* ---- PROPERTY DETAIL ---- */
+.property-gallery {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-3);
+  height: 420px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  margin-bottom: var(--space-8);
+}
+.gallery-main {
+  background: linear-gradient(135deg, var(--geo-green-100), var(--geo-green-300));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 5rem;
+}
+.gallery-side { display: grid; grid-template-rows: 1fr 1fr; gap: var(--space-3); }
+.gallery-thumb {
+  background: linear-gradient(135deg, var(--geo-green-50), var(--geo-green-200));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem;
+  border-radius: var(--radius-lg);
+}
+.owner-card {
+  background: var(--surface-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-lifted-card);
+  margin-bottom: var(--space-4);
+}
+.owner-avatar {
+  width: 52px; height: 52px;
+  border-radius: 999px;
+  background: var(--geo-green-100);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  margin-bottom: var(--space-3);
+}
+.escrow-cta {
+  background: linear-gradient(135deg, var(--geo-green-600), var(--geo-green-700));
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  color: white;
+  text-align: center;
+}
+.escrow-cta h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: var(--space-2); }
+.escrow-cta p { font-size: 0.85rem; opacity: 0.8; margin-bottom: var(--space-5); }
+.escrow-cta .btn { background: white; color: var(--geo-green-700); width: 100%; justify-content: center; }
+.escrow-cta .btn:hover { background: var(--geo-green-50); }
+
+/* ---- PAGE WRAPPER ---- */
+.page { display: none; }
+.page.active { display: block; }
+.page-padded { padding-top: var(--nav-height); }
+
+/* ---- MISC ---- */
+.text-center { text-align: center; }
+.mt-2 { margin-top: var(--space-2); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
+.mt-8 { margin-top: var(--space-8); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+.mb-8 { margin-bottom: var(--space-8); }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.divider { height: 1px; background: var(--border-subtle); margin: var(--space-5) 0; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface-secondary);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-lifted);
+}
+.highlight-green { color: var(--geo-green-600); }
+.font-bold { font-weight: 700; }
+.text-sm { font-size: 0.85rem; }
+.text-muted { color: var(--text-muted); }
+
+/* ============================================================
+   ANIMATED HERO — GEOESTATE NIG LIMITED
+   ============================================================ */
+
+/* Background pattern shift */
+.geo-hero::before {
+  animation: bgShift 20s ease-in-out infinite alternate;
+}
+@keyframes bgShift {
+  0%   { background-position: 0% 0%; opacity: 1; }
+  100% { background-position: 100% 100%; opacity: 0.5; }
+}
+
+/* Floating city skyline */
+.geo-hero-skyline {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 60%;
+  max-width: 800px;
+  opacity: 0.15;
+  pointer-events: none;
+  animation: skylineFloat 8s ease-in-out infinite;
+}
+@keyframes skylineFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+
+/* Animated map pin */
+.geo-hero-pin {
+  position: absolute;
+  top: 28%; right: 25%;
+  animation: pinPulse 2.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes pinPulse {
+  0%, 100% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 12px rgba(110,201,154,0.6)); }
+  50%       { transform: scale(1.1) translateY(-8px); filter: drop-shadow(0 0 28px rgba(110,201,154,1)); }
+}
+
+/* Floating property cards */
+.hero-float-card {
+  position: absolute;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 14px;
+  padding: 12px 18px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), 0 8px 32px rgba(0,0,0,0.25);
+  color: white;
+  font-family: var(--font-sans);
+  pointer-events: none;
+  z-index: 2;
+}
+.hero-float-card-1 {
+  top: 22%; right: 8%;
+  animation: floatCard1 6s ease-in-out infinite;
+}
+.hero-float-card-2 {
+  top: 52%; right: 14%;
+  animation: floatCard2 7s ease-in-out infinite 1s;
+}
+.hero-float-card-3 {
+  top: 38%; right: 32%;
+  animation: floatCard3 5s ease-in-out infinite 0.5s;
+}
+@keyframes floatCard1 {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%       { transform: translateY(-12px) rotate(0deg); }
+}
+@keyframes floatCard2 {
+  0%, 100% { transform: translateY(0) rotate(1deg); }
+  50%       { transform: translateY(-16px) rotate(0deg); }
+}
+@keyframes floatCard3 {
+  0%, 100% { transform: translateY(0) rotate(-0.5deg); }
+  50%       { transform: translateY(-8px) rotate(0.5deg); }
+}
+
+/* Glowing orbs */
+.geo-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(70px);
+}
+.geo-orb-1 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(26,156,85,0.3) 0%, transparent 70%);
+  top: -120px; right: 5%;
+  animation: orbDrift1 14s ease-in-out infinite;
+}
+.geo-orb-2 {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(110,201,154,0.18) 0%, transparent 70%);
+  bottom: 5%; left: 25%;
+  animation: orbDrift2 18s ease-in-out infinite 3s;
+}
+@keyframes orbDrift1 {
+  0%, 100% { transform: translate(0, 0); }
+  33%       { transform: translate(-40px, 50px); }
+  66%       { transform: translate(25px, -25px); }
+}
+@keyframes orbDrift2 {
+  0%, 100% { transform: translate(0, 0); }
+  50%       { transform: translate(50px, -35px); }
+}
+
+/* Hero content entrance animations */
+.geo-hero-eyebrow { animation: fadeUp 0.6s ease both; }
+.geo-hero h1      { animation: fadeUp 0.7s ease 0.1s both; }
+.geo-hero-sub     { animation: fadeUp 0.7s ease 0.2s both; }
+.geo-search-bar   { animation: fadeUp 0.7s ease 0.3s both; }
+.geo-hero-stats   { animation: fadeUp 0.7s ease 0.4s both; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Video modal */
+#video-modal {
+  display: none;
+}
+#video-modal.open {
+  display: flex !important;
+}
+
+/* =============================================================================
+   MOBILE RESPONSIVE — GeoEstate
+   Full Android/iOS support: 320px → 768px
+   ============================================================================= */
+
+/* ── Hamburger menu button ── */
+.geo-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.geo-hamburger:hover { background: rgba(255,255,255,0.08); }
+.geo-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 2px;
+  transition: all 0.25s ease;
+}
+.geo-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.geo-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.geo-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── Portals dropdown (Owner / Sales / Admin) — desktop hamburger ── */
+.portal-dropdown { position: relative; }
+.portal-menu-btn { display: flex !important; }
+.portal-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 190px;
+  background: var(--surface-primary);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 0 0 1px var(--border-subtle);
+  padding: 8px;
+  opacity: 0;
+  transform: translateY(-8px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 1100;
+}
+.portal-dropdown-panel.open {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+.portal-dropdown-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  padding: 6px 10px 8px;
+}
+.portal-dropdown-panel a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background 0.12s;
+}
+.portal-dropdown-panel a:hover { background: var(--surface-hover); }
+
+/* ── Mobile nav drawer ── */
+.geo-mobile-nav {
+  display: block;
+  position: fixed;
+  top: var(--nav-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface-primary);
+  z-index: 9990;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 0 32px;
+  border-top: 1px solid var(--border-subtle);
+  transform: translateY(-12px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease, visibility 0.22s;
+}
+.geo-mobile-nav.open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.geo-mobile-nav a, .geo-mobile-nav button.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.1s;
+}
+.geo-mobile-nav a:hover, .geo-mobile-nav button.nav-link:hover {
+  background: var(--surface-hover);
+}
+.geo-mobile-nav a.danger { color: #dc2626; }
+.geo-mobile-nav-cta {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.geo-mobile-nav-cta .btn {
+  width: 100%;
+  justify-content: center;
+  height: 48px;
+  font-size: 1rem;
+}
+
+/* ── Breakpoint: tablets (≤768px) ── */
+@media (max-width: 768px) {
+  /* AGGRESSIVE OVERFLOW PREVENTION */
+  * {
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+  
+  body, html {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Property detail page: the fixed 340px owner/transaction column has no
+     room on a phone screen and gets pushed off the right edge entirely.
+     Drop to a single stacked column instead. */
+  .property-detail-layout {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  /* HOME PAGE HERO FIXES */
+  .geo-hero {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: calc(var(--nav-height) + 16px) 16px 32px !important;
+    overflow: hidden !important;
+  }
+  
+  #hero-slideshow {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .hero-slide {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  #hero-dots {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+  }
+  
+  #hero-label {
+    left: 16px !important;
+    right: 16px !important;
+    max-width: calc(100% - 32px) !important;
+  }
+  
+  .hero-float-card {
+    max-width: calc(100vw - 32px) !important;
+    padding: 12px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* PROPERTY DETAIL PAGE FIXES */
+  .page-detail-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  
+  #prop-detail-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+  }
+  
+  .property-gallery {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  .gallery-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  .gallery-main img {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+  
+  .gallery-side {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .gallery-side img {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+  
+  .property-info {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  .property-title {
+    font-size: 1.4rem !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+  }
+  
+  .property-price {
+    font-size: 1.2rem !important;
+  }
+  
+  /* SEARCH/LISTING PAGE FIXES */
+  .search-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+  }
+  
+  .search-bar {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  
+  .search-bar select {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  .search-bar input {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  .search-bar button {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  /* Property listing grid */
+  .geo-prop-grid {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 16px !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+  }
+  
+  .property-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  .property-card img {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+  
+  /* MAP PAGE FIXES */
+  .map-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  
+  #map {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 50vh !important;
+  }
+  
+  .map-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 45vh !important;
+    overflow-y: auto !important;
+  }
+  
+  .map-sidebar-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px 16px !important;
+    box-sizing: border-box !important;
+    word-wrap: break-word !important;
+  }
+  
+  /* ALL CONTAINERS & SECTIONS */
+  section {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  
+  main {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    padding: 0 !important;
+  }
+  
+  .page {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* MODAL/DIALOG FIXES */
+  .geo-modal-overlay {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .geo-modal-overlay > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* TEXT OVERFLOW */
+  h1, h2, h3, h4, h5, h6, p, span, div {
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    hyphens: auto !important;
+  }
+
+  .geo-nav-links { display: none !important; }
+  .geo-nav-cta .btn-secondary,
+  .geo-nav-cta .btn-primary { display: none; }
+  .geo-nav-cta .theme-toggle { display: flex; }
+  /* Hide admin link from nav on mobile — it's in the drawer */
+  .geo-nav-cta a[title="Admin Portal"],
+  .geo-nav-cta a[title="Owner Portal"],
+  .geo-nav-cta a[title="Sales Portal"] { display: none; }
+  /* Hide the whole portal group div on mobile */
+  .geo-nav-cta > div:last-of-type { display: none; }
+
+  /* Hero */
+  .geo-hero { min-height: 100svh; padding: calc(var(--nav-height) + 24px) 20px 48px; }
+  .geo-hero h1 { font-size: 2rem; line-height: 1.2; }
+  .geo-hero-sub { font-size: 1rem; }
+  .geo-hero-content { text-align: center; }
+  .geo-hero-cta { flex-direction: column; gap: 12px; }
+  .geo-hero-cta .btn { width: 100%; justify-content: center; height: 52px; font-size: 1rem; }
+  .geo-hero-stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .geo-hero-skyline { display: none; }
+
+  /* Sections */
+  .geo-section { padding: 48px 20px; }
+  .geo-section h2 { font-size: 1.6rem; }
+
+  /* Grids → single column */
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr !important; }
+
+  /* Footer */
+  .geo-footer-grid { grid-template-columns: 1fr !important; gap: 32px; }
+  .geo-footer-inner { padding: 48px 20px 32px; }
+  .geo-footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+
+  /* Auth modal */
+  .geo-modal-overlay { align-items: flex-end !important; padding: 0 !important; }
+  .geo-modal-overlay > div { border-radius: 20px 20px 0 0 !important; max-height: 92svh !important; width: 100% !important; max-width: 100% !important; }
+
+  /* Property cards */
+  .geo-prop-grid { grid-template-columns: 1fr !important; }
+
+  /* Map page */
+  #map { height: 55svh !important; }
+  .map-sidebar { width: 100% !important; position: relative !important; height: auto !important; }
+
+  /* How it works steps */
+  .geo-steps { flex-direction: column !important; }
+
+  /* Team grid */
+  .geo-team-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Verify page */
+  .geo-verify-steps { flex-direction: column !important; }
+
+  /* OTP boxes */
+  .otp-box { width: 40px !important; height: 48px !important; font-size: 1.2rem !important; }
+
+  /* Dispute / contact forms */
+  .geo-form-grid { grid-template-columns: 1fr !important; }
+
+  /* Page padding */
+  .page-padded { padding-top: var(--nav-height); }
+  [style*="max-width:1100px"], [style*="max-width:1280px"] { padding-left: 16px !important; padding-right: 16px !important; }
+
+  /* ═══ FORM ELEMENTS & INPUT FIXES ═══ */
+  /* All text inputs, selects, textareas */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="phone"],
+  input[type="date"],
+  select,
+  textarea {
+    width: 100% !important;
+    padding: 12px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Buttons */
+  .btn, button {
+    width: 100% !important;
+    padding: 14px 16px !important;
+    font-size: 1rem !important;
+    min-height: 48px !important; /* Touch target minimum */
+    box-sizing: border-box !important;
+  }
+
+  /* Chips & badges */
+  .chip {
+    font-size: 0.85rem !important;
+    padding: 6px 10px !important;
+  }
+
+  /* Cards with flex/grid that overflow */
+  [style*="display:flex"], [style*="display: flex"],
+  [style*="display:grid"], [style*="display: grid"] {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Search bar container */
+  .search-bar, [class*="search"] {
+    width: 100% !important;
+    flex-direction: column !important;
+  }
+
+  /* Property gallery image grid */
+  .property-gallery {
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .gallery-side {
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  /* Modal/Dialog sizing */
+  [class*="modal"], [class*="dialog"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 16px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Tables → horizontal scroll on mobile */
+  table {
+    font-size: 0.85rem !important;
+    min-width: 100% !important;
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  table th, table td {
+    padding: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Responsive text sizing */
+  h1 { font-size: 1.75rem !important; }
+  h2 { font-size: 1.4rem !important; }
+  h3 { font-size: 1.15rem !important; }
+  h4, h5, h6 { font-size: 1rem !important; }
+
+  /* Spacing adjustments */
+  [style*="margin:"] { margin: 8px !important; }
+  [style*="padding:"] { padding: 12px !important; }
+
+  /* Container max-widths */
+  main, section, [role="main"] {
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Prevent horizontal scroll on any element */
+  * {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  body {
+    overflow-x: hidden !important;
+  }
+}
+
+/* ── Breakpoint: small phones (≤480px) ── */
+@media (max-width: 480px) {
+  .geo-hero h1 { font-size: 1.5rem !important; }
+  .geo-hero-stats { grid-template-columns: 1fr 1fr; }
+  .otp-box { width: 36px !important; height: 44px !important; font-size: 1.1rem !important; }
+  .geo-team-grid { grid-template-columns: 1fr !important; }
+
+  /* Tighten padding on very small screens */
+  .geo-hero { padding: calc(var(--nav-height) + 16px) 16px 32px !important; }
+  .geo-section { padding: 32px 16px !important; }
+  .geo-footer-inner { padding: 32px 16px 24px !important; }
+
+  /* Smaller font on compact screens */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 14px !important;
+    padding: 10px !important;
+  }
+
+  .btn, button {
+    padding: 12px 14px !important;
+    font-size: 0.95rem !important;
+  }
+
+  h1 { font-size: 1.4rem !important; }
+  h2 { font-size: 1.2rem !important; }
+  h3 { font-size: 1rem !important; }
+
+  /* Hide less critical elements on tiny screens */
+  .geo-nav-cta { display: flex !important; gap: 8px !important; }
+}
+
+/* ── Breakpoint: extra small (≤360px, older phones) ── */
+@media (max-width: 360px) {
+  .geo-hero h1 { font-size: 1.3rem !important; }
+  .geo-hero-sub { font-size: 0.9rem !important; }
+
+  input, select, textarea, button {
+    font-size: 14px !important;
+    padding: 10px 8px !important;
+  }
+
+  .btn { min-height: 44px !important; }
+
+  h1 { font-size: 1.25rem !important; }
+  h2 { font-size: 1.05rem !important; }
+  h3 { font-size: 0.95rem !important; }
+
+  body { font-size: 0.9rem !important; }
+
+  /* Stack any remaining side-by-side items */
+  [style*="flex"] {
+    flex-direction: column !important;
+  }
+}
+
+/* ── Safe area for notched phones ── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .geo-mobile-nav { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+  .geo-footer { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ── Tiny screen fix (360px and below) ────────────────── */
+@media (max-width: 360px) {
+  .geo-hero h1 { font-size: 1.4rem !important; }
+  .geo-nav { padding: 0 12px; }
+  .geo-mobile-nav a { padding: 12px 16px; font-size: 0.95rem; }
+  .geo-section { padding: 36px 12px; }
+  .page-padded > div { padding-left: 12px !important; padding-right: 12px !important; }
+}
