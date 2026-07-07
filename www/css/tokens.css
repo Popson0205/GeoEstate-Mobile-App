@@ -1,0 +1,91 @@
+/* ============================================================
+   GeoEstate v2 — Design Tokens
+   Brand green retained from v1, new spacing/typography system
+   ============================================================ */
+:root {
+  /* Brand green scale (kept from v1) */
+  --g-50:  #f0faf4;
+  --g-100: #d9f2e3;
+  --g-200: #a8dfc0;
+  --g-300: #6ec99a;
+  --g-400: #3db374;
+  --g-500: #1a9c55;
+  --g-600: #1a6b3c;
+  --g-700: #145430;
+  --g-800: #0d3d22;
+  --g-900: #071f12;
+
+  --amber-400: #f59e0b;
+  --amber-600: #d97706;
+  --gold: #c9a227;
+  --red-500: #e5484d;
+  --red-600: #c53d41;
+
+  /* Surfaces (dark app, matches screenshot) */
+  --bg-app: #0a1a11;
+  --bg-elevated: #0f2417;
+  --bg-card: #12291a;
+  --bg-card-hover: #163420;
+  --bg-input: #ffffff;
+  --border-soft: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.16);
+
+  /* Text */
+  --text-primary: #f4f9f6;
+  --text-secondary: #a9c2b3;
+  --text-muted: #6f8a79;
+  --text-on-light: #0d3d22;
+  --text-inverse: #0a1a11;
+
+  /* Semantic */
+  --success: var(--g-400);
+  --warning: var(--amber-400);
+  --danger: var(--red-500);
+  --accent: var(--g-400);
+
+  /* Spacing scale (4px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 48px;
+  --sp-10: 64px;
+
+  /* Radius */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* Typography */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 17px;
+  --fs-lg: 20px;
+  --fs-xl: 24px;
+  --fs-2xl: 30px;
+  --fs-3xl: 36px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.35);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.45);
+
+  /* Layout */
+  --header-h: 56px;
+  --tabbar-h: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --z-header: 100;
+  --z-tabbar: 100;
+  --z-modal: 500;
+  --z-toast: 600;
+}

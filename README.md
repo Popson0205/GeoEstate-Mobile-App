@@ -1,88 +1,79 @@
-# GeoEstate — Customer Android App
+# GeoEstate — Native Android App (v2)
 
-This is a Capacitor-wrapped Android app built from the GeoEstate customer website
-(`index.html` from GeoEstate2). It talks to the same live backend
-(`https://api.geoestate.com.ng`) as the website — no backend changes were made.
+Full rebuild of the GeoEstate customer + owner experience as a single native
+Capacitor app. Same live backend (`https://api.geoestate.com.ng`) as before —
+no backend changes — but every screen (including the Owner Dashboard) now
+renders natively inside the app. Nothing opens the external browser.
 
-## What's included vs. excluded
+## What's included
 
-**Included (customer-facing pages only):**
-Home, Browse Map, Property Detail, Verify Identity, Our Team, Contact, Profile,
-Privacy Policy, Terms.
+- **Home** — live stats, quick search, fresh listings
+- **Browse** — filter by Rent / Buy / Lease, search by state/LGA/keyword
+- **Property Detail** — gallery, amenities, units, enquiry form, WhatsApp
+- **Owner Dashboard** (native — no browser hand-off)
+  - Add Property (multi-step form, in-app)
+  - Manage Properties, filter by type
+  - Units management (add/view units per property)
+  - Enquiries inbox
+- **Verify Identity** — NIN + document/selfie upload via Supabase signed URLs
+- **Team** — sales team with WhatsApp deep links
+- **Contact** — email/phone/WhatsApp + contact form
+- **Profile** — session-aware (customer or owner), sign out
 
-**Excluded / removed from the app:**
-- The "Portals" menu (Owner / Partner / Sales / Admin login links) — removed from
-  both the desktop-style top nav and the mobile drawer.
-- The "List Property" entry in the nav — this action lands on the Owner Dashboard,
-  which is a separate tool (`owner-dashboard.html`) not bundled into this app.
-  The few "List a Property" buttons still on the Home/Detail pages now open the
-  live owner dashboard in the device's browser instead (via `@capacitor/browser`),
-  so the feature isn't broken — it just isn't a native in-app screen.
-- `admin.html`, `owner-dashboard.html`, `sales.html`, `partner.html` were never
-  copied into this project at all.
+## Why the rebuild
 
-Note: `index.html` itself has a large dormant admin-panel block of JS/HTML baked
-in (only ever activated by the removed admin nav link). It's inert now — nothing
-in the app can trigger it — but it does add extra weight to the bundle. It was
-left in place to avoid risking breakage across the file; stripping it out is a
-safe follow-up if you want a smaller APK later.
+The previous build (`GeoEstate-Mobile-App` v1) intentionally routed all
+Owner Dashboard flows (`goListProperty()`) to `owner-dashboard.html` in the
+system browser via `@capacitor/browser`, because the dashboard was only ever
+built as a standalone web tool. This version implements that dashboard as a
+first-class in-app screen instead, wired directly to the same
+`/owner/*` API endpoints.
 
 ## Project structure
 
 ```
-geoestate-app/
-├── www/                  ← the customer web app (HTML/CSS/JS) — edit this to change UI
-├── android/               ← native Android project (open this folder in Android Studio)
-├── assets/                ← source icon/splash artwork (1024×1024)
-├── capacitor.config.json  ← app id, name, colors, plugin config
-└── package.json
+www/                  ← the app (HTML/CSS/JS) — edit this to change UI
+  ├── css/             tokens.css (design tokens), base.css (components)
+  ├── js/               api.js (backend client), app.js (router/shell),
+  │                     screen-*.js (one file per screen), util.js (helpers)
+  └── assets/          team photos, icons
+android/               native Android project (Capacitor)
+capacitor.config.json  app id, name, colors, plugin config
 ```
 
 ## Building the APK
 
-You'll need Android Studio (or the Android SDK + Java 17 command line tools)
-installed locally — this was not built inside this sandbox since it has no
-Android SDK.
+### Automatically (GitHub Actions)
+Every push to `main` triggers `.github/workflows/build-apk.yml`, which runs
+`npx cap sync android && ./gradlew assembleDebug` and uploads the resulting
+debug APK as a workflow artifact (Actions tab → latest run → Artifacts).
 
-### Option A — Android Studio (recommended)
-1. Open Android Studio → **Open** → select the `android/` folder.
-2. Let Gradle sync finish (first sync downloads dependencies, needs internet).
-3. Run ▶ on a device/emulator, or **Build → Generate Signed Bundle / APK** for a
-   release build.
-
-### Option B — Command line
+### Locally
 ```bash
+npm install
+npx cap sync android
 cd android
 ./gradlew assembleDebug
-# APK output: android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-## Making changes later
-Edit files in `www/`, then re-sync into the native project:
-```bash
-npx cap copy android      # just copies web assets
-npx cap sync android      # copies web assets + updates native plugins
+# APK: android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ## App identity
 - App ID: `ng.com.geoestate.app`
 - App name: GeoEstate
-- Brand color used for status bar / splash / icon background: `#0d3d22`
+- Brand color: `#0a1a11` (dark green surface), accent green `#3db374`
 
-## Permissions requested
-- `INTERNET` — all API calls, map tiles, images
-- `CAMERA`, `READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE` (≤ API 32) — used by the
-  Verify Identity page's selfie and ID-document file pickers
+## Permissions
+- `INTERNET` — API calls, image loading
+- `CAMERA`, `READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE` (≤ API 32) — Verify
+  Identity selfie/document upload
 
-## Native niceties added on top of the website
-- Hardware **back button** steps back through in-app pages (and closes the auth
-  modal / mobile drawer first) instead of always exiting the app.
-- Branded splash screen and app icon generated from the GeoEstate logo.
-- Status bar colored to match the brand.
-- Deep external links (e.g. Owner Dashboard) open in the system browser via
-  `@capacitor/browser` rather than trying to load inside the app.
+## Known upstream note
+`targetSdkVersion` is pinned to 34 (not 36) to avoid an active Capacitor 8 /
+Android 15-16 edge-to-edge bug that breaks keyboard input in fixed-position
+overlays — carried over from a fix applied in v1.
 
 ## Signing for the Play Store
-When you're ready for a release build, generate a keystore and configure
-signing in `android/app/build.gradle` (or via Android Studio's Generate Signed
-Bundle wizard) — this project currently only has debug signing configured.
+This project only has debug signing configured. For a release build, generate
+a keystore and configure `signingConfigs.release` in
+`android/app/build.gradle` (or via Android Studio's Generate Signed Bundle
+wizard).
