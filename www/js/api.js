@@ -134,16 +134,28 @@
 
     // ---- Uploads (Supabase signed PUT) ----
     async uploadSign(folder, ext) { return req('/upload-sign', { method: 'POST', body: { folder, ext } }); },
-    async uploadFile(file, folder) {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const sign = await this.uploadSign(folder, ext);
-      const putRes = await fetch(sign.signedUrl || sign.signed_url, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file
-      });
-      if (!putRes.ok) throw new Error('Upload failed');
-      return sign.publicUrl || sign.public_url;
+    async uploadFile(file, folder, attempt = 1) {
+      const MAX_ATTEMPTS = 3;
+      try {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const sign = await this.uploadSign(folder, ext);
+        const putRes = await fetch(sign.signedUrl || sign.signed_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file
+        });
+        if (!putRes.ok) throw new Error('Upload failed');
+        return sign.publicUrl || sign.public_url;
+      } catch (e) {
+        // Mobile connections frequently hand off between wifi/cellular mid-upload
+        // (net::ERR_NETWORK_CHANGED); retry a couple of times before giving up
+        // rather than failing on the first transient blip.
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise(r => setTimeout(r, 600 * attempt));
+          return this.uploadFile(file, folder, attempt + 1);
+        }
+        throw new Error('Could not upload "' + file.name + '" — check your connection and try again');
+      }
     },
 
     // ---- Team (static fallback — no public team endpoint on backend) ----
