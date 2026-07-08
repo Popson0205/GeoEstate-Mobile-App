@@ -181,6 +181,35 @@
       </div>`;
   }
 
+  // ── Multi-photo / video / multi-document gallery block ─────────────────
+  // Renders the "Photos & Video" + "Additional Documents" UI for a given
+  // section prefix ('fp', 'buy', or 'lease'). Actual state lives in
+  // galleryState (see wireGallery / addGalleryImages etc. below).
+  function galleryHTML(prefix) {
+    return `
+      <div class="geo-card mb-3" style="border-style:dashed;">
+        <div class="font-bold text-sm mb-1">Property Photos <span class="text-xs text-muted" style="font-weight:400;">(min 3, max ${GALLERY_MAX_IMAGES})</span></div>
+        <div id="${prefix}-images-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin:8px 0"></div>
+        <button type="button" class="btn btn-outline btn-sm w-full" data-gallery-add-img="${prefix}">📸 Add Photo(s)</button>
+        <input type="hidden" id="${prefix}-images">
+        <div id="${prefix}-images-count" style="margin-top:8px;font-size:12px;font-weight:600;color:var(--danger,#e5484d)">0 photos uploaded — at least 3 required</div>
+      </div>
+      <div class="geo-card mb-3" style="border-style:dashed;">
+        <div class="font-bold text-sm mb-1">Property Video <span class="text-xs text-muted" style="font-weight:400;">(optional — short walkthrough clip)</span></div>
+        <div id="${prefix}-video-wrap" class="hidden" style="margin-bottom:8px">
+          <video id="${prefix}-video-tag" controls style="width:100%;max-height:180px;border-radius:8px;background:#000"></video>
+          <button type="button" class="btn btn-outline btn-sm w-full mt-2" data-gallery-remove-video="${prefix}">🗑️ Remove Video</button>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm w-full" data-gallery-add-video="${prefix}">🎥 Upload Video</button>
+        <input type="hidden" id="${prefix}-video">
+      </div>
+      <div class="geo-card mb-3" style="border-style:dashed;">
+        <div class="font-bold text-sm mb-1">Additional Documents <span class="text-xs text-muted" style="font-weight:400;">(optional)</span></div>
+        <div id="${prefix}-docs-list" style="margin-bottom:8px"><div class="text-xs text-muted">No additional documents yet.</div></div>
+        <button type="button" class="btn btn-outline btn-sm w-full" data-gallery-add-doc="${prefix}">📎 Add Document(s)</button>
+      </div>`;
+  }
+
   const RENT_PROP_TYPES = [
     ['flat','Flat / Apartment'],['house','House / Duplex'],['room','Self-Contain / Room'],
     ['bungalow','Bungalow'],['shortlet-apartment','Shortlet Apartment'],['shortlet-studio','Studio Apartment'],
@@ -339,7 +368,7 @@
       </div>
 
       ${sectionTitle('📸 Media & Documents')}
-      ${uploadBox('Main Property Photo', 'Optional — shown on the listing card', 'fp-img', '📸 Upload Photo', 'fp-img-status')}
+      ${galleryHTML('fp')}
       ${uploadBox('Tenancy Agreement', 'Optional — your standard agreement template', 'fp-rent-agreement', '📎 Upload Agreement', 'fp-rent-agreement-status')}
 
       <div class="field"><label>Notes for Admin (optional)</label><textarea class="input" id="fp-notes"></textarea></div>
@@ -403,7 +432,7 @@
       ${uploadBox('🏛️ Building Approval / Permit', 'Planning or development permit', 'buy-doc-approval', '📎 Upload Permit', 'buy-doc-approval-status')}
 
       ${sectionTitle('📸 Media & Sale Agreement')}
-      ${uploadBox('Main Property Photo', 'Optional — shown on the listing card', 'buy-img', '📸 Upload Photo', 'buy-img-status')}
+      ${galleryHTML('buy')}
       ${uploadBox('Sale / Purchase Agreement', 'Optional — Sale and Purchase Agreement (SPA) template', 'buy-sale-agreement', '📎 Upload Sale Agreement', 'buy-sale-agreement-status')}
 
       <div class="field"><label>Notes for Admin (optional)</label><textarea class="input" id="buy-notes"></textarea></div>
@@ -483,11 +512,176 @@
       ${uploadBox('🗺️ Survey Plan', 'Optional — registered survey document', 'lease-doc-survey', '📎 Upload', 'lease-doc-survey-status')}
 
       ${sectionTitle('📸 Media')}
-      ${uploadBox('Main Property Photo', 'Optional — shown on the listing card', 'lease-img', '📸 Upload Photo', 'lease-img-status')}
+      ${galleryHTML('lease')}
 
       <div class="field"><label>Notes for Admin (optional)</label><textarea class="input" id="lease-notes"></textarea></div>
       <button class="btn btn-primary btn-block" id="ap-submit-lease">Submit Lease Listing →</button>
     `;
+  }
+
+  // ── Multi-photo / video / multi-document gallery state ──────────────────
+  const GALLERY_MAX_IMAGES = 8;
+  const GALLERY_MIN_IMAGES = 3;
+  const GALLERY_MAX_VIDEO_MB = 100;
+  const galleryState = {
+    fp:    { images: [], video: null, docs: [] },
+    buy:   { images: [], video: null, docs: [] },
+    lease: { images: [], video: null, docs: [] }
+  };
+
+  function resetGallery(prefix) {
+    galleryState[prefix] = { images: [], video: null, docs: [] };
+  }
+
+  function renderGallery(prefix) {
+    const st = galleryState[prefix];
+
+    const grid = document.getElementById(prefix + '-images-grid');
+    if (grid) {
+      grid.innerHTML = st.images.map((url, i) => `
+        <div style="position:relative">
+          <img src="${url}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border-soft)">
+          <button type="button" data-gallery-rm-img="${prefix}:${i}"
+            style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:.75rem;line-height:1;">×</button>
+        </div>
+      `).join('');
+      grid.querySelectorAll('[data-gallery-rm-img]').forEach(btn => {
+        btn.onclick = () => {
+          const [p, i] = btn.dataset.galleryRmImg.split(':');
+          galleryState[p].images.splice(parseInt(i, 10), 1);
+          renderGallery(p);
+        };
+      });
+    }
+    const countEl = document.getElementById(prefix + '-images-count');
+    if (countEl) {
+      const n = st.images.length;
+      const ok = n >= GALLERY_MIN_IMAGES;
+      countEl.textContent = n + ' photo' + (n === 1 ? '' : 's') + ' uploaded' + (ok ? ' ✅' : ' — at least ' + GALLERY_MIN_IMAGES + ' required');
+      countEl.style.color = ok ? 'var(--g-400)' : 'var(--danger,#e5484d)';
+    }
+    const imgsInput = document.getElementById(prefix + '-images');
+    if (imgsInput) imgsInput.value = JSON.stringify(st.images);
+
+    const videoWrap = document.getElementById(prefix + '-video-wrap');
+    const videoTag = document.getElementById(prefix + '-video-tag');
+    const videoInput = document.getElementById(prefix + '-video');
+    if (videoWrap) videoWrap.classList.toggle('hidden', !st.video);
+    if (videoTag && st.video) videoTag.src = st.video;
+    if (videoInput) videoInput.value = st.video || '';
+
+    const docsList = document.getElementById(prefix + '-docs-list');
+    if (docsList) {
+      docsList.innerHTML = st.docs.length
+        ? st.docs.map((d, i) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:6px">
+            <span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📎 ${d.name}</span>
+            <button type="button" class="btn btn-outline btn-sm" data-gallery-rm-doc="${prefix}:${i}" style="white-space:nowrap">Remove</button>
+          </div>
+        `).join('')
+        : '<div class="text-xs text-muted">No additional documents yet.</div>';
+      docsList.querySelectorAll('[data-gallery-rm-doc]').forEach(btn => {
+        btn.onclick = () => {
+          const [p, i] = btn.dataset.galleryRmDoc.split(':');
+          galleryState[p].docs.splice(parseInt(i, 10), 1);
+          renderGallery(p);
+        };
+      });
+    }
+  }
+
+  function wireGallery(prefix) {
+    renderGallery(prefix);
+
+    const addImgBtn = document.querySelector(`[data-gallery-add-img="${prefix}"]`);
+    if (addImgBtn) addImgBtn.onclick = () => {
+      const st = galleryState[prefix];
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.multiple = true;
+      fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+      fileInput.onchange = async () => {
+        const files = Array.from(fileInput.files || []);
+        document.body.removeChild(fileInput);
+        if (!files.length) return;
+        setBtnLoading(addImgBtn, true);
+        for (const file of files) {
+          if (st.images.length >= GALLERY_MAX_IMAGES) { toast('Maximum ' + GALLERY_MAX_IMAGES + ' photos allowed', 'info'); break; }
+          try {
+            const url = await API.uploadFile(file, 'geoestate/property-images');
+            st.images.push(url);
+            renderGallery(prefix);
+          } catch (err) {
+            toast('Photo upload failed: ' + (err.message || 'try again'), 'error');
+          }
+        }
+        setBtnLoading(addImgBtn, false, '📸 Add Photo(s)');
+      };
+      fileInput.click();
+    };
+
+    const addVideoBtn = document.querySelector(`[data-gallery-add-video="${prefix}"]`);
+    if (addVideoBtn) addVideoBtn.onclick = () => {
+      const st = galleryState[prefix];
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'video/*';
+      fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+      fileInput.onchange = async () => {
+        const file = fileInput.files[0];
+        document.body.removeChild(fileInput);
+        if (!file) return;
+        if (file.size > GALLERY_MAX_VIDEO_MB * 1024 * 1024) { toast('Video must be under ' + GALLERY_MAX_VIDEO_MB + 'MB', 'error'); return; }
+        setBtnLoading(addVideoBtn, true);
+        try {
+          const url = await API.uploadFile(file, 'geoestate/property-videos');
+          st.video = url;
+          renderGallery(prefix);
+          toast('Video uploaded', 'success');
+        } catch (err) {
+          toast('Video upload failed: ' + (err.message || 'try again'), 'error');
+        }
+        setBtnLoading(addVideoBtn, false, '🎥 Upload Video');
+      };
+      fileInput.click();
+    };
+
+    const removeVideoBtn = document.querySelector(`[data-gallery-remove-video="${prefix}"]`);
+    if (removeVideoBtn) removeVideoBtn.onclick = () => {
+      galleryState[prefix].video = null;
+      renderGallery(prefix);
+    };
+
+    const addDocBtn = document.querySelector(`[data-gallery-add-doc="${prefix}"]`);
+    if (addDocBtn) addDocBtn.onclick = () => {
+      const st = galleryState[prefix];
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.pdf,.jpg,.jpeg,.png,.webp';
+      fileInput.multiple = true;
+      fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+      fileInput.onchange = async () => {
+        const files = Array.from(fileInput.files || []);
+        document.body.removeChild(fileInput);
+        if (!files.length) return;
+        setBtnLoading(addDocBtn, true);
+        for (const file of files) {
+          try {
+            const url = await API.uploadFile(file, 'geoestate/documents');
+            st.docs.push({ name: file.name, url });
+            renderGallery(prefix);
+          } catch (err) {
+            toast('Document upload failed: ' + (err.message || 'try again'), 'error');
+          }
+        }
+        setBtnLoading(addDocBtn, false, '📎 Add Document(s)');
+      };
+      fileInput.click();
+    };
   }
 
   // ---- Wiring: cascading state/LGA, rent-category toggle, uploads, submit ----
@@ -495,19 +689,19 @@
     if (type === 'rent') {
       NG.wireStateLga('fp-state', 'fp-lga');
       wireRentCategoryToggle();
-      wireUpload('fp-img', 'fp-img-status', 'geoestate/property-images', false);
+      wireGallery('fp');
       wireUpload('fp-rent-agreement', 'fp-rent-agreement-status', 'geoestate/documents', true);
       document.getElementById('ap-submit-rent').onclick = (e) => submitAddProperty('rent', e.target);
     } else if (type === 'buy') {
       NG.wireStateLga('buy-state', 'buy-lga');
-      wireUpload('buy-img', 'buy-img-status', 'geoestate/property-images', false);
+      wireGallery('buy');
       ['buy-doc-coo','buy-doc-deed','buy-doc-survey','buy-doc-approval','buy-sale-agreement'].forEach(id => {
         wireUpload(id, id + '-status', 'geoestate/documents', true);
       });
       document.getElementById('ap-submit-buy').onclick = (e) => submitAddProperty('buy', e.target);
     } else {
       NG.wireStateLga('lease-state', 'lease-lga');
-      wireUpload('lease-img', 'lease-img-status', 'geoestate/property-images', false);
+      wireGallery('lease');
       ['lease-agreement','lease-doc-coo','lease-doc-survey'].forEach(id => {
         wireUpload(id, id + '-status', 'geoestate/documents', true);
       });
@@ -574,6 +768,12 @@
   function checked(id) { const el = document.getElementById(id); return el && el.checked; }
 
   async function submitAddProperty(lt, btn) {
+    const galleryPrefix = lt === 'buy' ? 'buy' : (lt === 'lease' ? 'lease' : 'fp');
+    const gallery = galleryState[galleryPrefix];
+    if (gallery.images.length < GALLERY_MIN_IMAGES) {
+      return toast('Please upload at least ' + GALLERY_MIN_IMAGES + ' photos of the property', 'error');
+    }
+
     let payload = {};
 
     if (lt === 'rent') {
@@ -606,7 +806,9 @@
           size_sqm: num('fp-sqm'), year_built: intval('fp-year-built'),
           description: val('fp-desc'),
           amenities: val('fp-amenities').split(',').map(s => s.trim()).filter(Boolean),
-          img: val('fp-img'), agreement_doc: val('fp-rent-agreement') || null,
+          img: galleryState.fp.images[0] || '', images: galleryState.fp.images,
+          video_url: galleryState.fp.video || null, docs: galleryState.fp.docs,
+          agreement_doc: val('fp-rent-agreement') || null,
           notes: val('fp-notes')
         };
       } else {
@@ -625,7 +827,9 @@
           size_sqm: num('fp-sqm'), year_built: intval('fp-year-built'),
           description: val('fp-desc'),
           amenities: val('fp-amenities').split(',').map(s => s.trim()).filter(Boolean),
-          img: val('fp-img'), agreement_doc: val('fp-rent-agreement') || null,
+          img: galleryState.fp.images[0] || '', images: galleryState.fp.images,
+          video_url: galleryState.fp.video || null, docs: galleryState.fp.docs,
+          agreement_doc: val('fp-rent-agreement') || null,
           notes: val('fp-notes')
         };
       }
@@ -654,7 +858,9 @@
         doc_coo: val('buy-doc-coo') || null, doc_deed: val('buy-doc-deed') || null,
         doc_survey: val('buy-doc-survey') || null, doc_approval: val('buy-doc-approval') || null,
         sale_agreement: val('buy-sale-agreement') || null,
-        img: val('buy-img'), notes: val('buy-notes')
+        img: galleryState.buy.images[0] || '', images: galleryState.buy.images,
+        video_url: galleryState.buy.video || null, docs: galleryState.buy.docs,
+        notes: val('buy-notes')
       };
     } else {
       const title = val('lease-title');
@@ -676,7 +882,9 @@
         amenities: val('lease-amenities').split(',').map(s => s.trim()).filter(Boolean),
         lease_agreement: val('lease-agreement') || null,
         doc_coo: val('lease-doc-coo') || null, doc_survey: val('lease-doc-survey') || null,
-        img: val('lease-img'), notes: val('lease-notes')
+        img: galleryState.lease.images[0] || '', images: galleryState.lease.images,
+        video_url: galleryState.lease.video || null, docs: galleryState.lease.docs,
+        notes: val('lease-notes')
       };
     }
 
@@ -685,6 +893,7 @@
       const res = await API.ownerAddProperty(payload);
       const typeLabel = { rent: 'Rental', buy: 'Sale', lease: 'Lease' }[lt] || lt;
       toast(res.message || ('✅ ' + typeLabel + ' listing submitted for review'), 'success');
+      resetGallery(galleryPrefix);
       closeSheet();
       loadOwnerProperties('all');
     } catch (err) {
