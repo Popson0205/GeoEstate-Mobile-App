@@ -58,11 +58,20 @@
   function mapProperty(p) {
     if (!p) return p;
     const lt = p.listing_type || p.type || 'rent';
-    let displayPrice = '';
-    if (lt === 'rent' && p.monthly_rent) displayPrice = '₦' + Number(p.monthly_rent).toLocaleString() + '/mo';
-    else if (lt === 'buy' && p.sale_price) displayPrice = '₦' + Number(p.sale_price).toLocaleString();
-    else if (lt === 'lease' && p.lease_price) displayPrice = '₦' + Number(p.lease_price).toLocaleString() + '/yr';
-    else if (p.price) displayPrice = /^\d+$/.test(String(p.price)) ? '₦' + Number(p.price).toLocaleString() : p.price;
+    // p.price is the authoritative, already-correctly-formatted price the
+    // backend saves at submission time (e.g. "₦1,200,000/yr" for standard
+    // tenancy rentals — Nigerian rent is paid annually upfront, not
+    // monthly). monthly_rent only exists as a derived-for-DB-compat value
+    // (annual ÷ 12) and must never be preferred over it, or displayed as
+    // "/mo" — that's actively misleading about how the rent is actually paid.
+    let displayPrice = p.price ? (/^\d+$/.test(String(p.price)) ? '₦' + Number(p.price).toLocaleString() : p.price) : '';
+    if (!displayPrice) {
+      if (lt === 'rent' && p.annual_rent) displayPrice = '₦' + Number(p.annual_rent).toLocaleString() + '/yr';
+      else if (lt === 'rent' && p.nightly_rate) displayPrice = '₦' + Number(p.nightly_rate).toLocaleString() + '/night';
+      else if (lt === 'rent' && p.monthly_rent) displayPrice = '₦' + Number(p.monthly_rent * 12).toLocaleString() + '/yr';
+      else if (lt === 'buy' && p.sale_price) displayPrice = '₦' + Number(p.sale_price).toLocaleString();
+      else if (lt === 'lease' && p.lease_price) displayPrice = '₦' + Number(p.lease_price).toLocaleString() + '/yr';
+    }
     const images = safeParseArr(p.images);
     const amenities = safeParseArr(p.amenities);
     return Object.assign({}, p, {
