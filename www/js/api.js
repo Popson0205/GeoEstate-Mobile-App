@@ -96,6 +96,7 @@
       return mapProperty(d.property);
     },
     async submitEnquiry(payload) { return req('/enquiry', { method: 'POST', body: payload }); },
+    async submitPayment(payload) { return req('/submit-payment', { method: 'POST', body: payload }); },
     async sendOTP(email, name, purpose) { return req('/send-otp', { method: 'POST', body: { email, name, purpose } }); },
     async verifyOTP(email, code) { return req('/verify-otp', { method: 'POST', body: { email, code } }); },
     async register(payload) {

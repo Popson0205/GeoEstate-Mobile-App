@@ -6,6 +6,10 @@
   const { esc, openSheet, closeSheet, toast, setBtnLoading } = window.GeoUtil;
   const API = window.GeoAPI;
 
+  // ---- Start Transaction / escrow transfer (mirrors website's payment modal) ----
+  const GEOESTATE_ACCOUNT = { name: 'GeoEstate NIG Limited', bank: 'Guaranty Trust Bank (GTB)', number: '0264374326' };
+  function generateRef() { return 'GEO-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + new Date().getFullYear(); }
+
   function amenityIcon(a) {
     const map = { parking:'🚗', water:'💧', security:'🛡️', generator:'⚡', pool:'🏊', gym:'🏋️', furnished:'🛋️', wifi:'📶', gated:'🚧', ac:'❄️' };
     const key = String(a).toLowerCase().replace(/\s+/g,'');
@@ -66,6 +70,15 @@
             <div><div class="font-bold text-sm">Owner Identity Verified</div><div class="text-xs text-muted">NIN checked. Title documents on file.</div></div>
           </div>
         </div>
+
+        <div class="mt-6">
+          <div class="geo-card" style="background:linear-gradient(135deg,var(--g-600),var(--g-700));">
+            <div class="h4 mb-2" style="color:#fff;">Start Transaction</div>
+            <div class="text-xs mb-3" style="color:rgba(255,255,255,.85);">Transfer funds to our verified account. Team confirms within 2 hours.</div>
+            <button class="btn w-full" id="detail-start-txn" style="background:#fff;color:var(--g-700);font-weight:700;">Start Transaction →</button>
+            <div class="text-xs mt-2" style="color:rgba(255,255,255,.7);">🔒 10% platform fee · Lawyer review on high-value deals</div>
+          </div>
+        </div>
       </div>
       <div class="geo-section" style="position:sticky;bottom:0;background:var(--bg-app);border-top:1px solid var(--border-soft);">
         <div class="flex gap-3">
@@ -76,6 +89,7 @@
     `;
 
     document.getElementById('detail-enquire').onclick = () => openEnquiryForm(p);
+    document.getElementById('detail-start-txn').onclick = () => openPaymentSheet(p);
     document.getElementById('detail-whatsapp').onclick = () => {
       const team = API.team()[0];
       const msg = encodeURIComponent(`Hi, I'm interested in "${p.title}" (${p.price}). Is it still available?`);
@@ -110,6 +124,83 @@
       } catch (err) { toast(err.message || 'Could not send enquiry', 'error'); }
       setBtnLoading(e.target, false, 'Send Enquiry');
     };
+  }
+
+  function openPaymentSheet(p) {
+    const rawAmount = parseInt(String(p.price || '0').replace(/[^0-9]/g, '')) || 0;
+    const ref = generateRef();
+    const html = `
+      <div class="sheet__header"><div class="h4">Complete Your Payment</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4">
+        <div class="geo-card mb-4" style="background:#3a2a0a;box-shadow:inset 0 0 0 1px var(--amber-400);font-size:var(--fs-xs);line-height:1.6;color:var(--amber-400);">
+          📢 <strong>Phase 1 — Manual Bank Transfer:</strong> Our sales team will contact you with the correct payment account details before any transaction is finalised. Do not transfer to any account unless confirmed by GeoEstate staff.
+        </div>
+        <div class="geo-card text-center mb-4" style="background:linear-gradient(135deg,var(--g-600),var(--g-700));">
+          <div class="text-xs" style="color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;">Total Amount to Transfer</div>
+          <div class="h2" style="color:#fff;margin:6px 0;">${rawAmount ? '₦' + rawAmount.toLocaleString('en-NG') : 'Contact us for amount'}</div>
+          <div class="text-xs" style="color:rgba(255,255,255,.65);">Includes 10% GeoEstate platform fee</div>
+        </div>
+        <div class="geo-card mb-3">
+          <div class="flex justify-between items-center mb-2"><span class="text-sm text-muted">Account Name</span><span class="text-sm font-bold">${esc(GEOESTATE_ACCOUNT.name)}</span></div>
+          <div class="flex justify-between items-center mb-2"><span class="text-sm text-muted">Bank</span><span class="text-sm font-bold">${esc(GEOESTATE_ACCOUNT.bank)}</span></div>
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm text-muted">Account Number</span>
+            <span class="flex items-center gap-2">
+              <span class="font-bold" style="font-family:monospace;letter-spacing:.06em;">${esc(GEOESTATE_ACCOUNT.number)}</span>
+              <button class="pill pill--green" id="pay-copy-btn" style="cursor:pointer;border:none;">Copy</button>
+            </span>
+          </div>
+          <div class="flex justify-between items-center"><span class="text-sm text-muted">Transfer Narration</span><span class="text-sm font-bold" style="color:var(--g-400);font-family:monospace;">${ref}</span></div>
+        </div>
+        <div class="geo-card mb-4" style="background:#3a2a0a;box-shadow:inset 0 0 0 1px var(--amber-400);font-size:var(--fs-xs);line-height:1.6;color:var(--amber-400);">
+          ⚠️ <strong>Important:</strong> Include reference <strong>${ref}</strong> in your transfer narration so we can match your payment.
+        </div>
+        <button class="btn btn-primary w-full" id="pay-confirm-btn">✅ I've Made the Transfer — Notify GeoEstate</button>
+        <div class="text-xs text-muted text-center mt-3">Questions? Call or WhatsApp us — +234 916 042 0100</div>
+      </div>
+    `;
+    openSheet(html);
+    document.getElementById('pay-copy-btn').onclick = () => {
+      navigator.clipboard.writeText(GEOESTATE_ACCOUNT.number).then(() => {
+        const b = document.getElementById('pay-copy-btn');
+        if (b) { b.textContent = 'Copied ✓'; setTimeout(() => { if (b) b.textContent = 'Copy'; }, 2000); }
+      }).catch(() => {});
+    };
+    document.getElementById('pay-confirm-btn').onclick = async (e) => {
+      const user = API.getUser();
+      const buyerName = user ? (user.fname + ' ' + (user.lname || '')).trim() : '';
+      setBtnLoading(e.target, true);
+      try {
+        await API.submitPayment({
+          ref, property_id: p.id, property_title: p.title,
+          buyer_name: buyerName, buyer_email: user ? user.email : '', buyer_phone: user ? (user.phone || '') : '',
+          owner: p.owner || '', amount: rawAmount,
+          prop: p.title, buyer: buyerName, phone: user ? (user.phone || '') : ''
+        });
+        closeSheet();
+        openPaymentSuccessSheet(ref);
+      } catch (err) {
+        toast(err.message || 'Could not notify GeoEstate — try again', 'error');
+        setBtnLoading(e.target, false, "✅ I've Made the Transfer — Notify GeoEstate");
+      }
+    };
+  }
+
+  function openPaymentSuccessSheet(ref) {
+    const html = `
+      <div class="px-4 text-center" style="padding-top:var(--sp-4);padding-bottom:var(--sp-6);">
+        <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+        <div class="h3 mb-2">Payment Notification Sent!</div>
+        <div class="text-sm text-muted mb-4" style="line-height:1.6;">Our team will confirm your transfer within <strong>2 hours</strong> and contact you to proceed with the handover.</div>
+        <div class="geo-card mb-4" style="background:var(--bg-elevated);">
+          <div class="text-xs text-muted">Your Reference Number</div>
+          <div class="h4" style="color:var(--g-400);font-family:monospace;">${ref}</div>
+        </div>
+        <div class="text-xs text-muted mb-4">Save this reference. You'll need it if you contact us about this transaction.</div>
+        <button class="btn btn-primary w-full" onclick="GeoUtil.closeSheet()">Done</button>
+      </div>
+    `;
+    openSheet(html);
   }
 
   window.GeoRouter.register('detail', render);
