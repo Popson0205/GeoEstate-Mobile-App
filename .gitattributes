@@ -1,0 +1,5 @@
+# Force LF line endings for Unix shell scripts regardless of platform/editor,
+# so gradlew's shebang line (#!/bin/sh) can never be silently corrupted to
+# "#!/bin/sh\r" by a Windows-based edit or upload again.
+gradlew text eol=lf
+*.sh text eol=lf
