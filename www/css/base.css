@@ -233,6 +233,16 @@ textarea.input { height: auto; min-height: 96px; padding: var(--sp-3) var(--sp-4
 @keyframes spin { to { transform: rotate(360deg); } }
 .page-loading { display: flex; align-items: center; justify-content: center; padding: var(--sp-9) 0; }
 
+/* ---- Pull-to-refresh ---- */
+#ptr-indicator {
+  height: 0; overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: height .25s cubic-bezier(.32,.72,0,1);
+}
+#ptr-indicator.active { transition: none; } /* no easing while finger is actively dragging */
+#ptr-indicator .spinner { opacity: .55; transition: opacity .15s ease; }
+#ptr-indicator.spinning .spinner { opacity: 1; }
+
 /* ---- Divider ---- */
 .divider { height: 1px; background: var(--border-soft); margin: var(--sp-4) 0; }
 

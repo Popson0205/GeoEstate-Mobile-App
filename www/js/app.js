@@ -74,6 +74,18 @@
   const routes = {}; // id -> render(container, params) => Promise|void
   function register(id, fn) { routes[id] = fn; }
 
+  async function renderRoute(id, params) {
+    const main = document.getElementById('main');
+    try {
+      const fn = routes[id];
+      if (!fn) { main.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🚧</div><div class="empty-state__title">Coming soon</div></div>`; return; }
+      await fn(main, params);
+    } catch (e) {
+      console.error('Route error', id, e);
+      main.innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">Something went wrong</div><div class="empty-state__sub">${esc(e.message || '')}</div></div>`;
+    }
+  }
+
   async function go(id, params) {
     state.route = id;
     state.params = params || {};
@@ -82,15 +94,16 @@
     const main = document.getElementById('main');
     main.scrollTop = 0;
     main.innerHTML = `<div class="page-loading"><div class="spinner"></div></div>`;
-    try {
-      const fn = routes[id];
-      if (!fn) { main.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🚧</div><div class="empty-state__title">Coming soon</div></div>`; return; }
-      await fn(main, state.params);
-    } catch (e) {
-      console.error('Route error', id, e);
-      main.innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">Something went wrong</div><div class="empty-state__sub">${esc(e.message || '')}</div></div>`;
-    }
+    await renderRoute(id, state.params);
     window.history.pushState({ route: id, params: params }, '', '#' + id);
+  }
+
+  // Re-render whatever screen is currently active, in place, without a full
+  // loading-spinner swap or a duplicate history entry — used by pull-to-refresh
+  // so the current content stays visible until fresh content is ready.
+  async function refreshCurrent() {
+    renderHeaderAvatar();
+    await renderRoute(state.route, state.params);
   }
 
   window.addEventListener('popstate', (e) => {
@@ -105,7 +118,84 @@
     else if (window.Capacitor && window.Capacitor.Plugins.App) { window.Capacitor.Plugins.App.exitApp(); }
   }, false);
 
-  window.GeoRouter = { register, go, state };
+  window.GeoRouter = { register, go, state, refreshCurrent };
+
+  // ============================================================
+  // Pull-to-refresh — attached once to #main (which persists across
+  // route changes; only its innerHTML is swapped), so it works on every
+  // screen automatically with no per-screen code.
+  // ============================================================
+  function initPullToRefresh() {
+    const main = document.getElementById('main');
+    if (!main || main.dataset.ptrBound) return;
+    main.dataset.ptrBound = '1';
+
+    const indicator = document.createElement('div');
+    indicator.id = 'ptr-indicator';
+    indicator.innerHTML = '<div class="spinner spinner--dark"></div>';
+    main.parentNode.insertBefore(indicator, main);
+
+    const THRESHOLD = 64;   // px of pull needed to trigger a refresh
+    const MAX_PULL = 96;    // visual cap, with resistance beyond this
+    let startY = 0, pulling = false, dragging = false, refreshing = false;
+
+    main.addEventListener('touchstart', (e) => {
+      if (refreshing) return;
+      // Only start tracking a pull if the user is already at the very top —
+      // otherwise this is just a normal scroll gesture.
+      if (main.scrollTop <= 0) {
+        startY = e.touches[0].clientY;
+        dragging = true;
+        pulling = false;
+        indicator.classList.add('active'); // disable CSS transition while dragging
+      }
+    }, { passive: true });
+
+    main.addEventListener('touchmove', (e) => {
+      if (!dragging || refreshing) return;
+      const delta = e.touches[0].clientY - startY;
+      if (delta <= 0) {
+        // User scrolled back up past the top instead of pulling down further —
+        // collapse the indicator and let normal scrolling resume.
+        pulling = false;
+        indicator.style.height = '0px';
+        return;
+      }
+      // Resistance curve so the indicator doesn't track 1:1 with the finger —
+      // makes the pull feel bounded rather than infinite.
+      const resisted = Math.min(MAX_PULL, delta * 0.5);
+      pulling = true;
+      indicator.style.height = resisted + 'px';
+      // Prevent the WebView's native overscroll/bounce only while actively
+      // pulling, so normal scrolling elsewhere is never affected.
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    async function endPull() {
+      dragging = false;
+      indicator.classList.remove('active'); // re-enable CSS transition for the settle animation
+      if (!pulling) { indicator.style.height = '0px'; return; }
+      pulling = false;
+      const indicatorHeight = parseFloat(indicator.style.height) || 0;
+      if (indicatorHeight >= THRESHOLD) {
+        refreshing = true;
+        indicator.style.height = '48px';
+        indicator.classList.add('spinning');
+        try {
+          await refreshCurrent();
+        } finally {
+          indicator.classList.remove('spinning');
+          indicator.style.height = '0px';
+          refreshing = false;
+        }
+      } else {
+        indicator.style.height = '0px';
+      }
+    }
+
+    main.addEventListener('touchend', endPull, { passive: true });
+    main.addEventListener('touchcancel', endPull, { passive: true });
+  }
 
   // ============================================================
   // Auth modals (email/password + OTP register)
@@ -237,6 +327,7 @@
   // ---- Boot ----
   document.addEventListener('DOMContentLoaded', () => {
     renderShell();
+    initPullToRefresh();
     const initial = (location.hash || '#home').replace('#', '') || 'home';
     go(initial);
   });
