@@ -98,10 +98,27 @@
     async submitEnquiry(payload) { return req('/enquiry', { method: 'POST', body: payload }); },
     async sendOTP(email, name, purpose) { return req('/send-otp', { method: 'POST', body: { email, name, purpose } }); },
     async verifyOTP(email, code) { return req('/verify-otp', { method: 'POST', body: { email, code } }); },
-    async register(payload) { return req('/register', { method: 'POST', body: payload }); },
+    async register(payload) {
+      const d = await req('/register', { method: 'POST', body: payload });
+      // Backend now issues an owner-session token straight from /register (no
+      // "user" object though — just submissionId), so build the session owner
+      // from the payload we just sent, mirroring the website's doRegister().
+      if (d.token) {
+        const owner = {
+          id: d.submissionId || ('USR-' + Date.now()),
+          fname: payload.fname, lname: payload.lname,
+          email: payload.email, phone: payload.phone, role: payload.role
+        };
+        setOwnerSession({ token: d.token, owner, loginTime: Date.now() });
+      }
+      return d;
+    },
     async userLogin(email, password) {
       const d = await req('/user/login', { method: 'POST', body: { email, password } });
       if (d.user) setUser(d.user);
+      // Bridge straight into an owner session (mirrors the website's doLogin()):
+      // backend now returns a token here too, so returning users skip the OTP screen.
+      if (d.token) setOwnerSession({ token: d.token, owner: d.user, loginTime: Date.now() });
       return d.user;
     },
     logoutUser() { clearUser(); },
