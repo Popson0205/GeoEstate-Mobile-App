@@ -32,12 +32,14 @@
 
     main.innerHTML = `
       <div style="position:relative;">
-        <div id="detail-gallery" style="width:100%;aspect-ratio:4/3;background:var(--bg-elevated);overflow:hidden;display:flex;">
-          ${images.length ? images.map(im => `<img src="${esc(im)}" style="width:100%;flex-shrink:0;object-fit:cover;" onerror="this.style.display='none'">`).join('')
-            : `<div class="flex items-center justify-center w-full" style="font-size:48px;opacity:.25;">🏠</div>`}
+        <div id="detail-gallery" style="width:100%;aspect-ratio:4/3;background:var(--bg-elevated);overflow-x:auto;overflow-y:hidden;display:flex;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+          ${images.length ? images.map(im => `<img src="${esc(im)}" style="width:100%;flex:0 0 100%;scroll-snap-align:start;object-fit:cover;" onerror="this.style.display='none'">`).join('')
+            : `<div class="flex items-center justify-center" style="width:100%;flex:0 0 100%;font-size:48px;opacity:.25;">🏠</div>`}
         </div>
-        <button class="geo-icon-btn" style="position:absolute;top:var(--sp-4);left:var(--sp-4);background:rgba(0,0,0,0.5);" onclick="history.back()">←</button>
-        <span class="pill pill--green" style="position:absolute;top:var(--sp-4);right:var(--sp-4);">${esc((p.listing_type||'rent').toUpperCase())}</span>
+        <button class="geo-icon-btn" style="position:absolute;top:var(--sp-4);left:var(--sp-4);background:rgba(0,0,0,0.5);z-index:2;" onclick="history.back()">←</button>
+        <span class="pill pill--green" style="position:absolute;top:var(--sp-4);right:var(--sp-4);z-index:2;">${esc((p.listing_type||'rent').toUpperCase())}</span>
+        ${images.length > 1 ? `<div id="gallery-counter" style="position:absolute;bottom:var(--sp-3);right:var(--sp-3);background:rgba(0,0,0,.6);color:#fff;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;z-index:2;">1 / ${images.length}</div>` : ''}
+        ${p.video_url ? `<button id="detail-video-btn" style="position:absolute;bottom:var(--sp-3);left:var(--sp-3);background:rgba(26,107,60,.9);color:#fff;border:none;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:700;z-index:2;cursor:pointer;">▶ Video Tour</button>` : ''}
       </div>
       <div class="geo-section">
         <div class="h2">${esc(p.price)}</div>
@@ -95,6 +97,27 @@
       const msg = encodeURIComponent(`Hi, I'm interested in "${p.title}" (${p.price}). Is it still available?`);
       window.open(`https://wa.me/${team.whatsapp}?text=${msg}`, '_system');
     };
+    if (images.length > 1) {
+      const galEl = document.getElementById('detail-gallery');
+      const counterEl = document.getElementById('gallery-counter');
+      galEl.addEventListener('scroll', () => {
+        const idx = Math.round(galEl.scrollLeft / galEl.clientWidth);
+        if (counterEl) counterEl.textContent = (Math.min(idx, images.length - 1) + 1) + ' / ' + images.length;
+      });
+    }
+    if (p.video_url) {
+      document.getElementById('detail-video-btn').onclick = () => openVideoSheet(p.video_url, p.title);
+    }
+  }
+
+  function openVideoSheet(url, title) {
+    const html = `
+      <div class="sheet__header"><div class="h4">${esc(title)} — Video Tour</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4">
+        <video src="${esc(url)}" controls playsinline style="width:100%;max-height:60vh;border-radius:var(--r-md);background:#000;"></video>
+      </div>
+    `;
+    openSheet(html);
   }
 
   function openEnquiryForm(p) {
