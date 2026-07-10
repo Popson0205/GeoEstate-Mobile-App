@@ -178,11 +178,33 @@
         <div class="geo-card mb-4" style="background:#3a2a0a;box-shadow:inset 0 0 0 1px var(--amber-400);font-size:var(--fs-xs);line-height:1.6;color:var(--amber-400);">
           ⚠️ <strong>Important:</strong> Include reference <strong>${ref}</strong> in your transfer narration so we can match your payment.
         </div>
+        <input type="file" id="receipt-file-input" accept="image/*,.pdf" style="display:none">
+        <div id="receipt-dropzone" style="border:2px dashed var(--border-soft);border-radius:var(--r-md);padding:14px;text-align:center;color:var(--text-muted);font-size:var(--fs-xs);margin-bottom:var(--sp-4);cursor:pointer;">
+          📎 Tap to upload transfer receipt / screenshot <strong>(required)</strong><br>
+          <span style="font-size:10px;">JPG, PNG or PDF</span>
+        </div>
         <button class="btn btn-primary w-full" id="pay-confirm-btn">✅ I've Made the Transfer — Notify GeoEstate</button>
         <div class="text-xs text-muted text-center mt-3">Questions? Call or WhatsApp us — +234 916 042 0100</div>
       </div>
     `;
     openSheet(html);
+    let receiptUrl = null;
+    const dz = document.getElementById('receipt-dropzone');
+    const fileInput = document.getElementById('receipt-file-input');
+    dz.onclick = () => fileInput.click();
+    fileInput.onchange = async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      dz.innerHTML = '⏳ Uploading receipt…';
+      try {
+        receiptUrl = await API.uploadFile(file, 'geoestate/payment-receipts');
+        dz.innerHTML = '✅ ' + esc(file.name) + ' uploaded<br><span style="font-size:10px;color:var(--g-400);">Tap to replace</span>';
+      } catch (err) {
+        receiptUrl = null;
+        dz.innerHTML = '⚠️ Upload failed — tap to try again<br><span style="font-size:10px;">JPG, PNG or PDF</span>';
+        toast(err.message || 'Could not upload receipt', 'error');
+      }
+    };
     document.getElementById('pay-copy-btn').onclick = () => {
       navigator.clipboard.writeText(GEOESTATE_ACCOUNT.number).then(() => {
         const b = document.getElementById('pay-copy-btn');
@@ -190,6 +212,10 @@
       }).catch(() => {});
     };
     document.getElementById('pay-confirm-btn').onclick = async (e) => {
+      if (!receiptUrl) {
+        toast('Please upload your transfer receipt/screenshot before continuing', 'error');
+        return;
+      }
       const user = API.getUser();
       const buyerName = user ? (user.fname + ' ' + (user.lname || '')).trim() : '';
       setBtnLoading(e.target, true);
@@ -197,7 +223,7 @@
         await API.submitPayment({
           ref, property_id: p.id, property_title: p.title,
           buyer_name: buyerName, buyer_email: user ? user.email : '', buyer_phone: user ? (user.phone || '') : '',
-          owner: p.owner || '', amount: rawAmount,
+          owner: p.owner || '', amount: rawAmount, receipt_url: receiptUrl,
           prop: p.title, buyer: buyerName, phone: user ? (user.phone || '') : ''
         });
         closeSheet();
