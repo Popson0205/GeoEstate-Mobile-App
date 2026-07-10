@@ -61,7 +61,14 @@
         ${p.units && p.units.length ? `<div class="mt-6"><div class="h4 mb-3">Units (${p.units.length})</div>
           <div class="prop-list">
           ${p.units.map(u => `<div class="geo-card flex justify-between items-center">
-            <div><div class="font-bold">${esc(u.unit_label)}</div><div class="text-xs text-muted">${esc(u.unit_type||'')}</div></div>
+            <div class="flex items-center gap-3">
+              ${(u.images && u.images[0]) ? `<img src="${esc(u.images[0])}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'">` : ''}
+              <div>
+                <div class="font-bold">${esc(u.unit_label)}</div>
+                <div class="text-xs text-muted">${esc(u.unit_type||'')}${u.monthly_price ? ' · ₦'+Number(u.monthly_price).toLocaleString()+'/mo' : ''}</div>
+                ${u.description ? `<div class="text-xs text-muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.description)}</div>` : ''}
+              </div>
+            </div>
             <span class="pill ${u.status==='vacant'?'pill--green':'pill--gray'}">${esc(u.status||'—')}</span>
           </div>`).join('')}
           </div></div>` : ''}
