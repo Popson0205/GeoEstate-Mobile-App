@@ -928,7 +928,14 @@
         <div class="prop-list mb-4">
         ${units.length ? units.map(u => `
           <div class="geo-card flex justify-between items-center">
-            <div><div class="font-bold">${esc(u.unit_label)}</div><div class="text-xs text-muted">${esc(u.unit_type||'')} ${u.monthly_price?'· ₦'+Number(u.monthly_price).toLocaleString():''}</div></div>
+            <div class="flex items-center gap-3">
+              ${(u.images && u.images[0]) ? `<img src="${esc(u.images[0])}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'">` : ''}
+              <div>
+                <div class="font-bold">${esc(u.unit_label)}</div>
+                <div class="text-xs text-muted">${esc(u.unit_type||'')} ${u.monthly_price?'· ₦'+Number(u.monthly_price).toLocaleString():''}</div>
+                ${u.description ? `<div class="text-xs text-muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.description)}</div>` : ''}
+              </div>
+            </div>
             <span class="pill ${u.status==='vacant'?'pill--green':'pill--gray'}">${esc(u.status||'vacant')}</span>
           </div>
         `).join('') : `<div class="empty-state"><div class="empty-state__icon">🏢</div><div class="empty-state__title">No units yet</div><div class="empty-state__sub">Add units below to manage multi-unit properties.</div></div>`}
@@ -938,17 +945,51 @@
           <div class="field w-full"><label>Type</label><input class="input" id="unit-type" placeholder="Room / Flat / Shop"></div>
           <div class="field w-full"><label>Price (₦/mo)</label><input class="input" id="unit-price" type="number"></div>
         </div>
+        <div class="field"><label>Description <span class="text-xs text-muted">(optional)</span></label><textarea class="input" id="unit-desc" rows="2" placeholder="e.g. Self-contained room, ensuite bathroom..."></textarea></div>
+        <div class="field">
+          <label>Unit Photo <span class="text-xs text-muted">(optional)</span></label>
+          <div id="unit-photo-preview" class="hidden" style="margin-bottom:8px">
+            <img id="unit-photo-preview-img" src="" style="width:100%;height:90px;object-fit:cover;border-radius:8px">
+          </div>
+          <button type="button" class="btn btn-outline btn-sm w-full" id="unit-photo-btn">📸 Upload Photo</button>
+          <input type="hidden" id="unit-photo">
+        </div>
         <button class="btn btn-primary btn-block" id="unit-add">Add Unit</button>
       `;
+      document.getElementById('unit-photo-btn').onclick = () => {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+        document.body.appendChild(fileInput);
+        fileInput.onchange = async () => {
+          const file = fileInput.files[0];
+          document.body.removeChild(fileInput);
+          if (!file) return;
+          try {
+            const url = await API.uploadFile(file, 'geoestate/unit-images');
+            document.getElementById('unit-photo').value = url;
+            document.getElementById('unit-photo-preview-img').src = url;
+            document.getElementById('unit-photo-preview').classList.remove('hidden');
+            toast('Photo uploaded', 'success');
+          } catch (err) {
+            toast('Photo upload failed: ' + (err.message || 'try again'), 'error');
+          }
+        };
+        fileInput.click();
+      };
       document.getElementById('unit-add').onclick = async (e) => {
         const unit_label = document.getElementById('unit-label').value.trim();
         if (!unit_label) return toast('Unit label required', 'error');
         setBtnLoading(e.target, true);
         try {
+          const photoUrl = document.getElementById('unit-photo').value;
           await API.ownerAddUnit(propId, {
             unit_label,
             unit_type: document.getElementById('unit-type').value.trim(),
-            monthly_price: document.getElementById('unit-price').value || null
+            monthly_price: document.getElementById('unit-price').value || null,
+            description: document.getElementById('unit-desc').value,
+            images: photoUrl ? [photoUrl] : []
           });
           toast('Unit added', 'success');
           openUnits(propId, title);

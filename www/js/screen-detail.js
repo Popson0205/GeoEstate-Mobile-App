@@ -10,6 +10,26 @@
   const GEOESTATE_ACCOUNT = { name: 'GeoEstate NIG Limited', bank: 'Guaranty Trust Bank (GTB)', number: '0264374326' };
   function generateRef() { return 'GEO-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + new Date().getFullYear(); }
 
+  // ---- Unit selection (mirrors website's selectUnit + unit-select-bar) ----
+  // Lets a customer pick a specific vacant unit (room/flat) within a
+  // multi-unit property, then Enquire or Start Transaction about that unit
+  // specifically — its own price/label is used instead of the property's.
+  let selectedUnit = null; // { id, label, price } or null
+
+  function selectDetailUnit(unitId, unitLabel, unitPrice) {
+    document.querySelectorAll('[data-unit-card]').forEach(c => {
+      c.style.borderColor = 'transparent';
+      c.style.boxShadow = '';
+    });
+    const card = document.getElementById('detail-unit-card-' + unitId);
+    if (card) { card.style.borderColor = 'var(--g-400)'; card.style.boxShadow = '0 0 0 2px var(--g-400)'; }
+    selectedUnit = { id: unitId, label: unitLabel, price: unitPrice };
+    const bar = document.getElementById('detail-unit-select-bar');
+    const labelEl = document.getElementById('detail-unit-select-label');
+    if (bar && labelEl) { labelEl.textContent = unitLabel; bar.classList.remove('hidden'); }
+  }
+  window.selectDetailUnit = selectDetailUnit;
+
   function amenityIcon(a) {
     const map = { parking:'🚗', water:'💧', security:'🛡️', generator:'⚡', pool:'🏊', gym:'🏋️', furnished:'🛋️', wifi:'📶', gated:'🚧', ac:'❄️' };
     const key = String(a).toLowerCase().replace(/\s+/g,'');
@@ -20,6 +40,7 @@
   async function render(main, params) {
     const id = params.id;
     if (!id) { window.GeoRouter.go('browse'); return; }
+    selectedUnit = null;
     main.innerHTML = `<div class="page-loading"><div class="spinner"></div></div>`;
     let p;
     try { p = await API.getProperty(id); }
@@ -59,12 +80,29 @@
         </div></div>` : ''}
 
         ${p.units && p.units.length ? `<div class="mt-6"><div class="h4 mb-3">Units (${p.units.length})</div>
+          <div class="text-xs text-muted mb-3">Tap a vacant unit, then Enquire or Start Transaction about that specific room/flat.</div>
           <div class="prop-list">
-          ${p.units.map(u => `<div class="geo-card flex justify-between items-center">
-            <div><div class="font-bold">${esc(u.unit_label)}</div><div class="text-xs text-muted">${esc(u.unit_type||'')}</div></div>
+          ${p.units.map(u => `<div class="geo-card flex justify-between items-center"
+              ${u.status === 'vacant' ? `id="detail-unit-card-${u.id}" data-unit-card style="cursor:pointer;border:2px solid transparent;transition:border-color .15s" onclick="selectDetailUnit(${u.id},'${esc(u.unit_label||'').replace(/'/g,"\\'")}',${u.monthly_price||0})"` : `style="opacity:.5"`}>
+            <div class="flex items-center gap-3">
+              ${(u.images && u.images[0]) ? `<img src="${esc(u.images[0])}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;flex-shrink:0" onerror="this.style.display='none'">` : ''}
+              <div>
+                <div class="font-bold">${esc(u.unit_label)}</div>
+                <div class="text-xs text-muted">${esc(u.unit_type||'')}${u.monthly_price ? ' · ₦'+Number(u.monthly_price).toLocaleString()+'/mo' : ''}</div>
+                ${u.description ? `<div class="text-xs text-muted" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.description)}</div>` : ''}
+              </div>
+            </div>
             <span class="pill ${u.status==='vacant'?'pill--green':'pill--gray'}">${esc(u.status||'—')}</span>
           </div>`).join('')}
-          </div></div>` : ''}
+          </div>
+          <div id="detail-unit-select-bar" class="geo-card hidden mb-4" style="background:#0d3d22;box-shadow:inset 0 0 0 1px var(--g-400);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <span class="text-sm font-bold" style="color:#fff">✅ Selected: <span id="detail-unit-select-label"></span></span>
+            <div class="flex gap-2">
+              <button class="btn btn-outline btn-sm" id="detail-unit-enquire">Enquire →</button>
+              <button class="btn btn-primary btn-sm" id="detail-unit-start-txn">Start Transaction →</button>
+            </div>
+          </div>
+          </div>` : ''}
 
         <div class="mt-6">
           <div class="verified-banner">
@@ -92,6 +130,10 @@
 
     document.getElementById('detail-enquire').onclick = () => openEnquiryForm(p);
     document.getElementById('detail-start-txn').onclick = () => openPaymentSheet(p);
+    const unitEnquireBtn = document.getElementById('detail-unit-enquire');
+    if (unitEnquireBtn) unitEnquireBtn.onclick = () => openEnquiryForm(p, selectedUnit);
+    const unitPayBtn = document.getElementById('detail-unit-start-txn');
+    if (unitPayBtn) unitPayBtn.onclick = () => openPaymentSheet(p, selectedUnit);
     document.getElementById('detail-whatsapp').onclick = () => {
       const team = API.team()[0];
       const msg = encodeURIComponent(`Hi, I'm interested in "${p.title}" (${p.price}). Is it still available?`);
@@ -120,11 +162,13 @@
     openSheet(html);
   }
 
-  function openEnquiryForm(p) {
+  function openEnquiryForm(p, unit) {
     const user = API.getUser();
+    const unitHint = unit ? `<div class="geo-card mb-3" style="background:#0d3d22;box-shadow:inset 0 0 0 1px var(--g-400);font-size:var(--fs-xs);color:#fff;">📌 Enquiring about: <strong>${esc(unit.label)}</strong></div>` : '';
     const html = `
       <div class="sheet__header"><div class="h4">Enquire about this property</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
       <div class="px-4">
+        ${unitHint}
         <div class="field"><label>Full Name</label><input class="input" id="enq-name" value="${esc(user ? (user.fname+' '+(user.lname||'')) : '')}"></div>
         <div class="field"><label>Email</label><input class="input" id="enq-email" type="email" value="${esc(user ? user.email : '')}"></div>
         <div class="field"><label>Phone</label><input class="input" id="enq-phone" type="tel" value="${esc(user ? user.phone||'' : '')}"></div>
@@ -141,7 +185,7 @@
       if (!name || !email) return toast('Name and email are required', 'error');
       setBtnLoading(e.target, true);
       try {
-        await API.submitEnquiry({ property_id: p.id, property_title: p.title, name, email, phone, message });
+        await API.submitEnquiry({ property_id: p.id, property_title: p.title, unit_id: unit ? unit.id : undefined, name, email, phone, message });
         toast('Enquiry sent! Our team will reach out shortly.', 'success');
         closeSheet();
       } catch (err) { toast(err.message || 'Could not send enquiry', 'error'); }
@@ -149,9 +193,16 @@
     };
   }
 
-  function openPaymentSheet(p) {
-    const isShortlet = !!p.nightly_rate;
-    const rawAmount = isShortlet ? 0 : (parseInt(String(p.price || '0').replace(/[^0-9]/g, '')) || 0);
+  function openPaymentSheet(p, unit) {
+    // For a specific selected unit, use its own price/label instead of the
+    // property-level price — mirrors the website's isUnitPayment handling.
+    // Shortlet date-picking only applies at the property level (no unit
+    // selected) since units don't currently carry their own nightly rate.
+    const isShortlet = !unit && !!p.nightly_rate;
+    const rawAmount = isShortlet ? 0 : (unit && unit.price > 0
+      ? Number(unit.price)
+      : (parseInt(String(p.price || '0').replace(/[^0-9]/g, '')) || 0));
+    const displayLabel = unit ? p.title + ' — ' + unit.label : p.title;
     const ref = generateRef();
     const html = `
       <div class="sheet__header"><div class="h4">Complete Your Payment</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
@@ -159,6 +210,7 @@
         <div class="geo-card mb-4" style="background:#3a2a0a;box-shadow:inset 0 0 0 1px var(--amber-400);font-size:var(--fs-xs);line-height:1.6;color:var(--amber-400);">
           📢 <strong>Phase 1 — Manual Bank Transfer:</strong> Our sales team will contact you with the correct payment account details before any transaction is finalised. Do not transfer to any account unless confirmed by GeoEstate staff.
         </div>
+        ${unit ? `<div class="geo-card mb-3" style="background:#0d3d22;box-shadow:inset 0 0 0 1px var(--g-400);font-size:var(--fs-xs);color:#fff;">📌 ${esc(displayLabel)}</div>` : ''}
         ${isShortlet ? `
         <div class="mb-4">
           <div class="text-xs text-muted mb-2" style="text-transform:uppercase;letter-spacing:.06em;">Select your stay dates</div>
@@ -281,7 +333,8 @@
           owner: p.owner || '', amount: currentAmount, receipt_url: receiptUrl,
           check_in: isShortlet ? document.getElementById('pay-checkin').value : undefined,
           check_out: isShortlet ? document.getElementById('pay-checkout').value : undefined,
-          prop: p.title, buyer: buyerName, phone: user ? (user.phone || '') : ''
+          unit_id: unit ? unit.id : undefined, unit_label: unit ? unit.label : undefined, unit_price: unit ? unit.price : undefined,
+          prop: unit ? (p.title + ' — ' + unit.label) : p.title, buyer: buyerName, phone: user ? (user.phone || '') : ''
         });
         closeSheet();
         openPaymentSuccessSheet(ref);
