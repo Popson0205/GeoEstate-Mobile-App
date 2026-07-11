@@ -150,7 +150,8 @@
   }
 
   function openPaymentSheet(p) {
-    const rawAmount = parseInt(String(p.price || '0').replace(/[^0-9]/g, '')) || 0;
+    const isShortlet = !!p.nightly_rate;
+    const rawAmount = isShortlet ? 0 : (parseInt(String(p.price || '0').replace(/[^0-9]/g, '')) || 0);
     const ref = generateRef();
     const html = `
       <div class="sheet__header"><div class="h4">Complete Your Payment</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
@@ -158,9 +159,22 @@
         <div class="geo-card mb-4" style="background:#3a2a0a;box-shadow:inset 0 0 0 1px var(--amber-400);font-size:var(--fs-xs);line-height:1.6;color:var(--amber-400);">
           📢 <strong>Phase 1 — Manual Bank Transfer:</strong> Our sales team will contact you with the correct payment account details before any transaction is finalised. Do not transfer to any account unless confirmed by GeoEstate staff.
         </div>
+        ${isShortlet ? `
+        <div class="mb-4">
+          <div class="text-xs text-muted mb-2" style="text-transform:uppercase;letter-spacing:.06em;">Select your stay dates</div>
+          <div class="flex gap-2">
+            <div style="flex:1"><label class="text-xs text-muted" style="display:block;margin-bottom:4px;">Check-in</label>
+              <input type="date" id="pay-checkin" style="width:100%;padding:9px 10px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border-soft);color:var(--text-primary);font-size:var(--fs-sm);">
+            </div>
+            <div style="flex:1"><label class="text-xs text-muted" style="display:block;margin-bottom:4px;">Check-out</label>
+              <input type="date" id="pay-checkout" style="width:100%;padding:9px 10px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border-soft);color:var(--text-primary);font-size:var(--fs-sm);">
+            </div>
+          </div>
+          <div id="shortlet-dates-feedback" class="text-xs mt-2"></div>
+        </div>` : ''}
         <div class="geo-card text-center mb-4" style="background:linear-gradient(135deg,var(--g-600),var(--g-700));">
           <div class="text-xs" style="color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em;">Total Amount to Transfer</div>
-          <div class="h2" style="color:#fff;margin:6px 0;">${rawAmount ? '₦' + rawAmount.toLocaleString('en-NG') : 'Contact us for amount'}</div>
+          <div class="h2" id="pay-amount-display" style="color:#fff;margin:6px 0;">${isShortlet ? 'Pick your dates' : (rawAmount ? '₦' + rawAmount.toLocaleString('en-NG') : 'Contact us for amount')}</div>
           <div class="text-xs" style="color:rgba(255,255,255,.65);">Includes 10% GeoEstate platform fee</div>
         </div>
         <div class="geo-card mb-3">
@@ -183,12 +197,49 @@
           📎 Tap to upload transfer receipt / screenshot <strong>(required)</strong><br>
           <span style="font-size:10px;">JPG, PNG or PDF</span>
         </div>
-        <button class="btn btn-primary w-full" id="pay-confirm-btn">✅ I've Made the Transfer — Notify GeoEstate</button>
+        <button class="btn btn-primary w-full" id="pay-confirm-btn"${isShortlet ? ' disabled style="opacity:.5;"' : ''}>✅ I've Made the Transfer — Notify GeoEstate</button>
         <div class="text-xs text-muted text-center mt-3">Questions? Call or WhatsApp us — +234 916 042 0100</div>
       </div>
     `;
     openSheet(html);
     let receiptUrl = null;
+    let currentAmount = rawAmount;
+    let bookedRanges = [];
+
+    if (isShortlet) {
+      const ciEl = document.getElementById('pay-checkin'), coEl = document.getElementById('pay-checkout');
+      const today = new Date().toISOString().slice(0, 10);
+      ciEl.min = today; coEl.min = today;
+      API.getAvailability(p.id).then(booked => { bookedRanges = booked || []; }).catch(() => {});
+      const recompute = () => {
+        const confirmBtn = document.getElementById('pay-confirm-btn');
+        const fb = document.getElementById('shortlet-dates-feedback');
+        const amountEl = document.getElementById('pay-amount-display');
+        if (ciEl.value) coEl.min = ciEl.value;
+        if (!ciEl.value || !coEl.value) return;
+        const ci = new Date(ciEl.value), co = new Date(coEl.value);
+        if (co <= ci) {
+          fb.innerHTML = '<span style="color:var(--danger);">Check-out must be after check-in</span>';
+          confirmBtn.disabled = true; confirmBtn.style.opacity = '.5';
+          return;
+        }
+        const conflict = bookedRanges.some(b => ciEl.value < b.check_out && co.toISOString().slice(0,10) > b.check_in);
+        if (conflict) {
+          fb.innerHTML = '<span style="color:var(--danger);">⚠️ Those dates overlap an existing booking</span>';
+          confirmBtn.disabled = true; confirmBtn.style.opacity = '.5';
+          amountEl.textContent = 'Unavailable';
+          currentAmount = 0;
+          return;
+        }
+        const nights = Math.round((co - ci) / 86400000);
+        currentAmount = nights * Number(p.nightly_rate || 0);
+        amountEl.textContent = '₦' + currentAmount.toLocaleString('en-NG');
+        fb.innerHTML = '<span style="color:var(--g-400);">✓ ' + nights + ' night' + (nights === 1 ? '' : 's') + ' — ₦' + Number(p.nightly_rate).toLocaleString('en-NG') + '/night</span>';
+        confirmBtn.disabled = false; confirmBtn.style.opacity = '1';
+      };
+      ciEl.onchange = recompute; coEl.onchange = recompute;
+    }
+
     const dz = document.getElementById('receipt-dropzone');
     const fileInput = document.getElementById('receipt-file-input');
     dz.onclick = () => fileInput.click();
@@ -216,6 +267,10 @@
         toast('Please upload your transfer receipt/screenshot before continuing', 'error');
         return;
       }
+      if (isShortlet && !currentAmount) {
+        toast('Please select valid, available check-in/check-out dates', 'error');
+        return;
+      }
       const user = API.getUser();
       const buyerName = user ? (user.fname + ' ' + (user.lname || '')).trim() : '';
       setBtnLoading(e.target, true);
@@ -223,13 +278,20 @@
         await API.submitPayment({
           ref, property_id: p.id, property_title: p.title,
           buyer_name: buyerName, buyer_email: user ? user.email : '', buyer_phone: user ? (user.phone || '') : '',
-          owner: p.owner || '', amount: rawAmount, receipt_url: receiptUrl,
+          owner: p.owner || '', amount: currentAmount, receipt_url: receiptUrl,
+          check_in: isShortlet ? document.getElementById('pay-checkin').value : undefined,
+          check_out: isShortlet ? document.getElementById('pay-checkout').value : undefined,
           prop: p.title, buyer: buyerName, phone: user ? (user.phone || '') : ''
         });
         closeSheet();
         openPaymentSuccessSheet(ref);
       } catch (err) {
-        toast(err.message || 'Could not notify GeoEstate — try again', 'error');
+        if (err.status === 409 && isShortlet) {
+          toast(err.message || 'Those dates were just booked — please pick different dates', 'error');
+          API.getAvailability(p.id).then(booked => { bookedRanges = booked || []; }).catch(() => {});
+        } else {
+          toast(err.message || 'Could not notify GeoEstate — try again', 'error');
+        }
         setBtnLoading(e.target, false, "✅ I've Made the Transfer — Notify GeoEstate");
       }
     };
