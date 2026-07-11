@@ -164,6 +164,11 @@
 
   function openEnquiryForm(p, unit) {
     const user = API.getUser();
+    if (!user) {
+      toast('Please create an account and log in before sending an enquiry', 'error');
+      window.GeoApp.openAuth('login');
+      return;
+    }
     const unitHint = unit ? `<div class="geo-card mb-3" style="background:#0d3d22;box-shadow:inset 0 0 0 1px var(--g-400);font-size:var(--fs-xs);color:#fff;">📌 Enquiring about: <strong>${esc(unit.label)}</strong></div>` : '';
     const html = `
       <div class="sheet__header"><div class="h4">Enquire about this property</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
@@ -194,6 +199,11 @@
   }
 
   function openPaymentSheet(p, unit) {
+    if (!API.getUser()) {
+      toast('Please create an account and log in before starting a transaction', 'error');
+      window.GeoApp.openAuth('login');
+      return;
+    }
     // For a specific selected unit, use its own price/label instead of the
     // property-level price — mirrors the website's isUnitPayment handling.
     // Shortlet date-picking only applies at the property level (no unit
