@@ -54,6 +54,9 @@
           <button class="geo-card clickable" style="text-align:left;" onclick="GeoOwner.showEnquiries()">
             <div style="font-size:22px;">📬</div><div class="font-bold text-sm mt-2">Enquiries</div>
           </button>
+          <button class="geo-card clickable" style="text-align:left;" onclick="GeoOwner.showTenancyTracker()">
+            <div style="font-size:22px;">📋</div><div class="font-bold text-sm mt-2">Tenancy Tracker</div>
+          </button>
         </div>
       </div>
       <div class="geo-section" style="padding-top:0;">
@@ -1034,6 +1037,47 @@
     }
   }
 
-  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, loadOwnerProperties };
+  // ---- Tenancy Tracker ----
+  async function showTenancyTracker() {
+    const html = `
+      <div class="sheet__header"><div class="h4">Tenancy Tracker</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4 text-xs text-muted mb-3">Active rent and lease agreements on your properties, created automatically once a payment is confirmed.</div>
+      <div class="px-4" id="tenancy-body" style="min-height:200px;"><div class="page-loading"><div class="spinner"></div></div></div>
+    `;
+    openSheet(html);
+    try {
+      const list = await API.ownerTenancies();
+      const body = document.getElementById('tenancy-body');
+      if (!list.length) {
+        body.innerHTML = `<div class="empty-state"><div class="empty-state__icon">📋</div><div class="empty-state__title">No active tenancies yet</div><div class="empty-state__sub">A tenancy is created automatically here once a rent or lease payment on one of your properties is confirmed.</div></div>`;
+        return;
+      }
+      const daysUntil = (d) => Math.ceil((new Date(d) - new Date()) / 86400000);
+      body.innerHTML = `<div class="prop-list">` + list.map(t => {
+        const days = t.end ? daysUntil(t.end) : null;
+        let pillClass = 'pill--green', pillText = 'Active';
+        if (t.status === 'expired' || (days !== null && days < 0)) { pillClass = 'pill--red'; pillText = 'Expired'; }
+        else if (days !== null && days <= 14) { pillClass = 'pill--amber'; pillText = 'Ending Soon'; }
+        else if (t.status === 'packing-out') { pillClass = 'pill--amber'; pillText = 'Packing Out'; }
+        return `
+          <div class="geo-card">
+            <div class="flex justify-between items-start">
+              <div class="font-bold">${esc(t.property || '—')}</div>
+              <span class="pill ${pillClass}">${pillText}</span>
+            </div>
+            <div class="text-xs text-muted mt-1">${esc(t.tenant || '—')} · <span style="text-transform:capitalize">${esc(t.type || 'rent')}</span></div>
+            <div class="flex justify-between text-xs text-muted mt-2">
+              <span>${t.start ? new Date(t.start).toLocaleDateString('en-NG') : '—'} → ${t.end ? new Date(t.end).toLocaleDateString('en-NG') : '—'}</span>
+              <span>${days !== null ? (days >= 0 ? days + ' days left' : 'Overdue') : ''}</span>
+            </div>
+          </div>
+        `;
+      }).join('') + `</div>`;
+    } catch (e) {
+      document.getElementById('tenancy-body').innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;
+    }
+  }
+
+  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, showTenancyTracker, loadOwnerProperties };
   window.GeoRouter.register('owner', render);
 })(window);

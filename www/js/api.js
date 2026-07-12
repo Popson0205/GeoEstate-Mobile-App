@@ -158,6 +158,7 @@
     async ownerAddProperty(payload) { return ownerReq('/owner/add-property', { method: 'POST', body: payload }); },
     async ownerVerifyIdentity(payload) { return ownerReq('/owner/verify-identity', { method: 'POST', body: payload }); },
     async ownerEnquiries() { const d = await ownerReq('/owner/enquiries'); return d.enquiries || []; },
+    async ownerTenancies() { const d = await ownerReq('/owner/tenancies'); return d.tenancies || []; },
     async ownerUnits(propId) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units'); },
     async ownerAddUnit(propId, payload) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units', { method: 'POST', body: payload }); },
     async ownerUpdateUnit(propId, unitId, payload) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units/' + unitId, { method: 'PATCH', body: payload }); },
