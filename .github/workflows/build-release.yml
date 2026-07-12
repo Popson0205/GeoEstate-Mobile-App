@@ -1,0 +1,87 @@
+name: Build Signed Release (Play Store)
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionCode:
+        description: 'Android versionCode (integer, must increase each Play Store upload)'
+        required: true
+        default: '1'
+      versionName:
+        description: 'Android versionName (user-visible version, e.g. 1.0.0)'
+        required: true
+        default: '1.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Sync Capacitor (copy web assets into native project)
+        run: npx cap sync android
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      - name: Decode release keystore
+        run: |
+          mkdir -p android/keystore
+          echo "${{ secrets.GEOESTATE_KEYSTORE_BASE64 }}" | base64 -d > android/keystore/geoestate-upload.keystore
+
+      - name: Set version code/name
+        working-directory: android/app
+        run: |
+          sed -i "s/versionCode .*/versionCode ${{ github.event.inputs.versionCode }}/" build.gradle
+          sed -i "s/versionName .*/versionName \"${{ github.event.inputs.versionName }}\"/" build.gradle
+
+      - name: Build signed release AAB (for Play Store upload)
+        working-directory: android
+        env:
+          GEOESTATE_KEYSTORE_PATH: ${{ github.workspace }}/android/keystore/geoestate-upload.keystore
+          GEOESTATE_KEYSTORE_PASSWORD: ${{ secrets.GEOESTATE_KEYSTORE_PASSWORD }}
+          GEOESTATE_KEY_ALIAS: ${{ secrets.GEOESTATE_KEY_ALIAS }}
+          GEOESTATE_KEY_PASSWORD: ${{ secrets.GEOESTATE_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Build signed release APK (for direct install/testing)
+        working-directory: android
+        env:
+          GEOESTATE_KEYSTORE_PATH: ${{ github.workspace }}/android/keystore/geoestate-upload.keystore
+          GEOESTATE_KEYSTORE_PASSWORD: ${{ secrets.GEOESTATE_KEYSTORE_PASSWORD }}
+          GEOESTATE_KEY_ALIAS: ${{ secrets.GEOESTATE_KEY_ALIAS }}
+          GEOESTATE_KEY_PASSWORD: ${{ secrets.GEOESTATE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Clean up decoded keystore
+        if: always()
+        run: rm -rf android/keystore
+
+      - name: Upload AAB (upload this one to Play Console)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GeoEstate-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      - name: Upload signed APK (for direct testing/sideloading)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GeoEstate-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 90

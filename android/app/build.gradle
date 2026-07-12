@@ -16,10 +16,31 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing — reads from environment variables so the actual
+    // keystore file and passwords never need to be committed to the repo.
+    // In CI these are populated from GitHub Secrets; locally, export them
+    // in your shell before running ./gradlew bundleRelease.
+    signingConfigs {
+        release {
+            def storeFilePath = System.getenv("GEOESTATE_KEYSTORE_PATH")
+            if (storeFilePath) {
+                storeFile file(storeFilePath)
+                storePassword System.getenv("GEOESTATE_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("GEOESTATE_KEY_ALIAS")
+                keyPassword System.getenv("GEOESTATE_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Only apply real signing if the env vars were actually provided
+            // (keeps a plain `./gradlew assembleRelease` with no env vars from
+            // failing outright — it'll just produce an unsigned build instead).
+            if (System.getenv("GEOESTATE_KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
