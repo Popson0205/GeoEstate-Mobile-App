@@ -195,7 +195,7 @@
         { name: 'Majekodunmi Lateefat', title: 'Sales Manager', email: 'mlateefat95@gmail.com', phone: '+2348133343645', whatsapp: '2348133343645', img: 'assets/Majekodunmi Lateefah - Sales Manager.jpeg' },
         { name: 'Adesina Faridat Adenike', title: 'Sales Manager', email: 'faridat3008@gmail.com', phone: '+2349131916831', whatsapp: '2349131916831', img: '' },
         { name: 'AbdulAzeez Hassan', title: 'Project Team Lead', email: '', phone: '', whatsapp: '', img: 'assets/AbdulAzeez Hassan - Project Team Lead.jpeg' },
-        { name: 'Idris Popoola', title: 'CEO / Founder', email: '', phone: '', whatsapp: '', img: 'assets/ceo-idris.png' }
+        { name: 'Adejumo Aminat', title: 'Co-Founder', email: '', phone: '', whatsapp: '', img: 'assets/ceo-idris.png' }
       ];
     },
 
