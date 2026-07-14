@@ -325,10 +325,62 @@
   };
 
   // ---- Boot ----
+  // ---- First-launch onboarding walkthrough ----
+  const ONBOARDING_SLIDES = [
+    { icon: '🏡', title: 'Welcome to GeoEstate', body: 'Verified real estate in Nigeria — every owner ID-checked before a listing goes live.' },
+    { icon: '🪪', title: 'Verified, Not Just Listed', body: 'No more fake agents or ghost listings. Owners complete identity verification before you ever see their property.' },
+    { icon: '💳', title: 'Pay With Confidence', body: 'Transfers are matched to a receipt and confirmed by our team before funds are released — never blind.' },
+    { icon: '📋', title: "You're Ready", body: 'Browse, save your favorites, and start your first transaction whenever you\'re ready.' }
+  ];
+
+  function showOnboarding(onDone) {
+    let idx = 0;
+    const overlay = document.createElement('div');
+    overlay.id = 'onboarding-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg-app);z-index:99999;display:flex;flex-direction:column;';
+    function render() {
+      const s = ONBOARDING_SLIDES[idx];
+      overlay.innerHTML = `
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;">
+          <div style="font-size:64px;margin-bottom:24px;">${s.icon}</div>
+          <div class="h2 mb-3">${s.title}</div>
+          <div class="text-muted" style="max-width:320px;line-height:1.6;">${s.body}</div>
+        </div>
+        <div style="padding:24px;">
+          <div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px;">
+            ${ONBOARDING_SLIDES.map((_, i) => `<div style="width:${i===idx?20:6}px;height:6px;border-radius:3px;background:${i===idx?'var(--g-400)':'var(--border-soft)'};transition:width .2s;"></div>`).join('')}
+          </div>
+          <button class="btn btn-primary w-full" id="ob-next">${idx === ONBOARDING_SLIDES.length - 1 ? 'Get Started' : 'Next'}</button>
+          ${idx < ONBOARDING_SLIDES.length - 1 ? `<button class="btn btn-outline w-full mt-2" id="ob-skip">Skip</button>` : ''}
+        </div>
+      `;
+      document.getElementById('ob-next').onclick = () => {
+        if (idx === ONBOARDING_SLIDES.length - 1) finish();
+        else { idx++; render(); }
+      };
+      const skipBtn = document.getElementById('ob-skip');
+      if (skipBtn) skipBtn.onclick = finish;
+    }
+    function finish() {
+      localStorage.setItem('geo_onboarding_seen', '1');
+      overlay.remove();
+      if (onDone) onDone();
+    }
+    document.body.appendChild(overlay);
+    render();
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    renderShell();
-    initPullToRefresh();
-    const initial = (location.hash || '#home').replace('#', '') || 'home';
-    go(initial);
+    function boot() {
+      renderShell();
+      initPullToRefresh();
+      const initial = (location.hash || '#home').replace('#', '') || 'home';
+      go(initial);
+    }
+    if (!localStorage.getItem('geo_onboarding_seen')) {
+      showOnboarding(boot);
+    } else {
+      boot();
+    }
   });
 })(window);

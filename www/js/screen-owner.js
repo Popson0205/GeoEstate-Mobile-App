@@ -47,6 +47,7 @@
             <div class="text-xs text-muted mb-3">You must verify your identity once before you can list properties.</div>
             <button class="btn btn-sm btn-primary" onclick="GeoRouter.go('verify')">Verify Now</button>
           </div>` : ''}
+        <div id="renewal-reminder-banner"></div>
         <div class="grid-2">
           <button class="geo-card clickable" style="text-align:left;" onclick="GeoOwner.openAddProperty()">
             <div style="font-size:22px;">➕</div><div class="font-bold text-sm mt-2">Add Property</div>
@@ -75,6 +76,19 @@
       };
     });
     loadOwnerProperties('all');
+
+    // Renewal reminders — non-blocking; only shows if something needs attention
+    API.ownerTenancies().then(list => {
+      const banner = document.getElementById('renewal-reminder-banner');
+      if (!banner) return;
+      const soon = list.filter(t => t.expiringSoon || t.status === 'expiring');
+      if (!soon.length) return;
+      banner.innerHTML = `
+        <div class="geo-card mb-4" style="border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);cursor:pointer;" onclick="GeoOwner.showTenancyTracker()">
+          <div class="font-bold text-sm mb-1">🔔 ${soon.length} tenanc${soon.length===1?'y is':'ies are'} ending soon</div>
+          <div class="text-xs text-muted">${soon.slice(0,2).map(t => esc(t.property) + ' — ' + esc(t.tenant)).join(', ')}${soon.length > 2 ? ', +' + (soon.length-2) + ' more' : ''}. Tap to view.</div>
+        </div>`;
+    }).catch(() => {});
   }
 
   async function loadOwnerProperties(type) {

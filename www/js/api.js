@@ -159,6 +159,34 @@
     async ownerVerifyIdentity(payload) { return ownerReq('/owner/verify-identity', { method: 'POST', body: payload }); },
     async ownerEnquiries() { const d = await ownerReq('/owner/enquiries'); return d.enquiries || []; },
     async ownerTenancies() { const d = await ownerReq('/owner/tenancies'); return d.tenancies || []; },
+
+    // ---- Favorites ----
+    async getFavorites() { const d = await ownerReq('/owner/favorites'); return (d.favorites || []).map(mapProperty); },
+    async addFavorite(propertyId) { return ownerReq('/owner/favorites', { method: 'POST', body: { property_id: propertyId } }); },
+    async removeFavorite(propertyId) { return ownerReq('/owner/favorites/' + encodeURIComponent(propertyId), { method: 'DELETE' }); },
+
+    // ---- Saved Searches (in-app matching; push alerts are a later phase) ----
+    async getSavedSearches() { const d = await ownerReq('/owner/saved-searches'); return d.searches || []; },
+    async addSavedSearch(label, filters) { return ownerReq('/owner/saved-searches', { method: 'POST', body: { label, filters } }); },
+    async removeSavedSearch(id) { return ownerReq('/owner/saved-searches/' + id, { method: 'DELETE' }); },
+
+    // ---- Ratings ----
+    async getOwnerRatings(ownerId) { return req('/owner/' + encodeURIComponent(ownerId) + '/ratings'); },
+    async addRating(ownerId, ref, stars, comment) { return ownerReq('/owner/ratings', { method: 'POST', body: { owner_id: ownerId, ref, stars, comment } }); },
+
+    // ---- Recently Viewed (pure client-side, no backend needed) ----
+    trackRecentlyViewed(property) {
+      try {
+        let list = JSON.parse(localStorage.getItem('geo_recently_viewed') || '[]');
+        list = list.filter(p => p.id !== property.id);
+        list.unshift({ id: property.id, title: property.title, price: property.price, img: property.img, location: property.location, listing_type: property.listing_type });
+        localStorage.setItem('geo_recently_viewed', JSON.stringify(list.slice(0, 20)));
+      } catch (e) {}
+    },
+    getRecentlyViewed() {
+      try { return JSON.parse(localStorage.getItem('geo_recently_viewed') || '[]'); } catch (e) { return []; }
+    },
+    clearRecentlyViewed() { localStorage.removeItem('geo_recently_viewed'); },
     async ownerUnits(propId) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units'); },
     async ownerAddUnit(propId, payload) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units', { method: 'POST', body: payload }); },
     async ownerUpdateUnit(propId, unitId, payload) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units/' + unitId, { method: 'PATCH', body: payload }); },

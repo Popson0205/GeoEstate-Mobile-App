@@ -41,7 +41,14 @@
     const id = params.id;
     if (!id) { window.GeoRouter.go('browse'); return; }
     selectedUnit = null;
-    main.innerHTML = `<div class="page-loading"><div class="spinner"></div></div>`;
+    main.innerHTML = `
+      <div class="skeleton" style="width:100%;aspect-ratio:4/3;border-radius:0;"></div>
+      <div class="geo-section">
+        <div class="skeleton" style="height:28px;width:40%;margin-bottom:10px;"></div>
+        <div class="skeleton" style="height:20px;width:70%;margin-bottom:10px;"></div>
+        <div class="skeleton" style="height:14px;width:50%;"></div>
+      </div>
+    `;
     let p;
     try { p = await API.getProperty(id); }
     catch (e) {
@@ -58,7 +65,11 @@
             : `<div class="flex items-center justify-center" style="width:100%;flex:0 0 100%;font-size:48px;opacity:.25;">🏠</div>`}
         </div>
         <button class="geo-icon-btn" style="position:absolute;top:var(--sp-4);left:var(--sp-4);background:rgba(0,0,0,0.5);z-index:2;" onclick="history.back()">←</button>
-        <span class="pill pill--green" style="position:absolute;top:var(--sp-4);right:var(--sp-4);z-index:2;">${esc((p.listing_type||'rent').toUpperCase())}</span>
+        <div style="position:absolute;top:var(--sp-4);right:var(--sp-4);z-index:2;display:flex;gap:8px;align-items:center;">
+          <button class="geo-icon-btn" id="detail-share-btn" style="background:rgba(0,0,0,0.5);">📤</button>
+          <button class="geo-icon-btn" id="detail-fav-btn" style="background:rgba(0,0,0,0.5);">🤍</button>
+        </div>
+        <span class="pill pill--green" style="position:absolute;top:56px;right:var(--sp-4);z-index:2;">${esc((p.listing_type||'rent').toUpperCase())}</span>
         ${images.length > 1 ? `<div id="gallery-counter" style="position:absolute;bottom:var(--sp-3);right:var(--sp-3);background:rgba(0,0,0,.6);color:#fff;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;z-index:2;">1 / ${images.length}</div>` : ''}
         ${p.video_url ? `<button id="detail-video-btn" style="position:absolute;bottom:var(--sp-3);left:var(--sp-3);background:rgba(26,107,60,.9);color:#fff;border:none;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:700;z-index:2;cursor:pointer;">▶ Video Tour</button>` : ''}
       </div>
@@ -66,6 +77,7 @@
         <div class="h2">${esc(p.price)}</div>
         <div class="h4 mt-2" style="font-weight:600;">${esc(p.title)}</div>
         <div class="text-muted text-sm mt-2">📍 ${esc(p.address || p.location)}</div>
+        <div id="detail-owner-rating" class="text-xs text-muted mt-2"></div>
 
         <div class="grid-3 mt-4">
           ${p.bedrooms ? `<div class="geo-card text-center"><div class="h4">${esc(p.bedrooms)}</div><div class="text-xs text-muted">Bedrooms</div></div>` : ''}
@@ -139,6 +151,46 @@
       const msg = encodeURIComponent(`Hi, I'm interested in "${p.title}" (${p.price}). Is it still available?`);
       window.open(`https://wa.me/${team.whatsapp}?text=${msg}`, '_system');
     };
+
+    // Favorite toggle
+    const favBtn = document.getElementById('detail-fav-btn');
+    let favorites = [];
+    try { favorites = API.getUser() || API.getOwnerSession() ? await API.getFavorites() : []; } catch (e) {}
+    let isFav = favorites.some(f => f.id === p.id);
+    favBtn.textContent = isFav ? '❤️' : '🤍';
+    favBtn.onclick = async () => {
+      if (!API.getUser() && !API.getOwnerSession()) {
+        toast('Please log in to save properties', 'error');
+        window.GeoApp.openAuth('login');
+        return;
+      }
+      try {
+        if (isFav) { await API.removeFavorite(p.id); isFav = false; toast('Removed from Saved'); }
+        else { await API.addFavorite(p.id); isFav = true; toast('Saved ❤️'); }
+        favBtn.textContent = isFav ? '❤️' : '🤍';
+      } catch (e) { toast(e.message || 'Could not update saved properties', 'error'); }
+    };
+
+    // Share
+    document.getElementById('detail-share-btn').onclick = () => {
+      const shareData = { title: p.title, text: `${p.title} — ${p.price} on GeoEstate`, url: 'https://geoestate.com.ng/?page=detail&id=' + encodeURIComponent(p.id) };
+      if (navigator.share) navigator.share(shareData).catch(() => {});
+      else if (navigator.clipboard) { navigator.clipboard.writeText(shareData.url); toast('Link copied to clipboard'); }
+    };
+
+    // Owner rating summary
+    if (p.owner_id) {
+      API.getOwnerRatings(p.owner_id).then(r => {
+        const el = document.getElementById('detail-owner-rating');
+        if (!el) return;
+        el.style.cursor = 'pointer';
+        el.innerHTML = (r.count > 0 ? '⭐ ' + r.average + ' (' + r.count + ' review' + (r.count===1?'':'s') + ')' : '⭐ Be the first to rate this owner') + ' <span style="color:var(--g-400);">· Rate →</span>';
+        el.onclick = () => openRateOwnerSheet(p);
+      }).catch(() => {});
+    }
+
+    // Track for Recently Viewed
+    API.trackRecentlyViewed(p);
     if (images.length > 1) {
       const galEl = document.getElementById('detail-gallery');
       const counterEl = document.getElementById('gallery-counter');
@@ -150,6 +202,45 @@
     if (p.video_url) {
       document.getElementById('detail-video-btn').onclick = () => openVideoSheet(p.video_url, p.title);
     }
+  }
+
+  function openRateOwnerSheet(p) {
+    if (!API.getUser() && !API.getOwnerSession()) {
+      toast('Please log in to leave a rating', 'error');
+      window.GeoApp.openAuth('login');
+      return;
+    }
+    let stars = 0;
+    const html = `
+      <div class="sheet__header"><div class="h4">Rate this Owner</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4">
+        <div class="text-sm text-muted mb-3">How was your experience with the owner of "${esc(p.title)}"?</div>
+        <div id="rate-stars" style="font-size:36px;text-align:center;letter-spacing:8px;margin-bottom:16px;cursor:pointer;">☆☆☆☆☆</div>
+        <textarea id="rate-comment" class="input" rows="3" placeholder="Optional comment..." style="width:100%;margin-bottom:16px;"></textarea>
+        <button class="btn btn-primary w-full" id="rate-submit-btn">Submit Rating</button>
+      </div>
+    `;
+    openSheet(html);
+    const starsEl = document.getElementById('rate-stars');
+    function renderStars() { starsEl.textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars); }
+    starsEl.onclick = (e) => {
+      const rect = starsEl.getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      stars = Math.max(1, Math.min(5, Math.ceil(pct * 5)));
+      renderStars();
+    };
+    document.getElementById('rate-submit-btn').onclick = async (e) => {
+      if (!stars) { toast('Please select a star rating', 'error'); return; }
+      setBtnLoading(e.target, true);
+      try {
+        await API.addRating(p.owner_id, p.id, stars, document.getElementById('rate-comment').value.trim());
+        closeSheet();
+        toast('Thanks for your rating! ⭐');
+      } catch (err) {
+        toast(err.message || 'Could not submit rating', 'error');
+        setBtnLoading(e.target, false, 'Submit Rating');
+      }
+    };
   }
 
   function openVideoSheet(url, title) {

@@ -3,7 +3,7 @@
 // ============================================================
 (function (window) {
   'use strict';
-  const { esc, debounce } = window.GeoUtil;
+  const { esc, debounce, toast } = window.GeoUtil;
   const API = window.GeoAPI;
   const { propCard, skeletonCards } = window.GeoScreens;
 
@@ -30,6 +30,7 @@
       <div class="geo-section" style="padding-top:0;">
         <div class="flex justify-between items-center mb-3">
           <span class="text-sm text-muted" id="browse-count">Loading…</span>
+          <button class="btn btn-outline btn-sm" id="browse-save-search">🔔 Save search</button>
         </div>
         <div class="prop-list" id="browse-results">${skeletonCards(4)}</div>
       </div>
@@ -48,6 +49,21 @@
     });
     document.getElementById('browse-search').oninput = doSearch;
     document.getElementById('browse-state').onchange = runSearch;
+    document.getElementById('browse-save-search').onclick = async () => {
+      if (!API.getUser() && !API.getOwnerSession()) {
+        toast('Please log in to save searches', 'error');
+        window.GeoApp.openAuth('login');
+        return;
+      }
+      const q = document.getElementById('browse-search').value.trim();
+      const st = document.getElementById('browse-state').value;
+      const filters = { type: currentType, state: st, q };
+      const label = [currentType, st].filter(Boolean).join(' · ') || 'My search';
+      try {
+        await API.addSavedSearch(label, filters);
+        toast('Search saved 🔔 — find it under Profile > Saved Searches');
+      } catch (e) { toast(e.message || 'Could not save search', 'error'); }
+    };
     if (params.q) document.getElementById('browse-search').value = params.q;
 
     async function runSearch() {
