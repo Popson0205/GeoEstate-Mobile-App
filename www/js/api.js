@@ -97,8 +97,25 @@
       if (opts.state) params.push('state=' + encodeURIComponent(opts.state));
       if (opts.q) params.push('q=' + encodeURIComponent(opts.q));
       const qs = params.length ? '?' + params.join('&') : '';
-      const d = await req('/properties' + qs);
-      return (d.properties || []).map(mapProperty);
+      const cacheKey = 'geo_cache_properties_' + (opts.type || 'all');
+      try {
+        const d = await req('/properties' + qs);
+        const list = (d.properties || []).map(mapProperty);
+        // Cache only the common, unfiltered-by-search case so a dropped
+        // connection still shows *something* instead of a blank/error screen.
+        if (!opts.q && !opts.state) {
+          try { localStorage.setItem(cacheKey, JSON.stringify({ list, cachedAt: Date.now() })); } catch (e) {}
+        }
+        return list;
+      } catch (netErr) {
+        if (!opts.q && !opts.state) {
+          try {
+            const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+            if (cached && cached.list) { cached.list._fromCache = true; return cached.list; }
+          } catch (e) {}
+        }
+        throw netErr;
+      }
     },
     async getProperty(id) {
       const d = await req('/properties/' + encodeURIComponent(id));

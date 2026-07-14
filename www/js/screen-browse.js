@@ -77,7 +77,8 @@
         if (!props.length) {
           resultsEl.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🔍</div><div class="empty-state__title">No ${esc(currentType)} listings yet</div><div class="empty-state__sub">Inventory is growing — try a different type or check back soon.</div></div>`;
         } else {
-          resultsEl.innerHTML = props.map(propCard).join('');
+          const offlineBanner = props._fromCache ? `<div class="text-xs text-muted mb-2" style="text-align:center;">📡 Offline — showing last-seen listings</div>` : '';
+          resultsEl.innerHTML = offlineBanner + props.map(propCard).join('');
         }
       } catch (e) {
         resultsEl.innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">Couldn't load properties</div><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;

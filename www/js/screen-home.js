@@ -106,7 +106,8 @@
       if (!props.length) {
         list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🏘️</div><div class="empty-state__title">No listings yet</div><div class="empty-state__sub">New verified properties are added regularly — check back soon.</div></div>`;
       } else {
-        list.innerHTML = props.slice(0, 6).map(propCard).join('');
+        const offlineBanner = props._fromCache ? `<div class="text-xs text-muted mb-2" style="text-align:center;">📡 Offline — showing last-seen listings</div>` : '';
+        list.innerHTML = offlineBanner + props.slice(0, 6).map(propCard).join('');
       }
     } catch (e) {
       document.getElementById('home-listings').innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">Couldn't load listings</div><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;
