@@ -370,6 +370,42 @@
     render();
   }
 
+  // ---- Biometric lock screen — shown before app content if the user has
+  // enabled it in Profile and there's an existing session to protect ----
+  function showBiometricLockScreen(onUnlocked) {
+    const overlay = document.createElement('div');
+    overlay.id = 'biometric-lock-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg-app);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;';
+    function render(errorMsg) {
+      overlay.innerHTML = `
+        <div style="font-size:64px;margin-bottom:24px;">🔒</div>
+        <div class="h2 mb-2">GeoEstate Locked</div>
+        <div class="text-muted mb-6" style="max-width:280px;line-height:1.6;">${errorMsg ? errorMsg : 'Use your fingerprint or face to continue'}</div>
+        <button class="btn btn-primary w-full" id="bio-unlock-btn" style="max-width:280px;">🔓 Unlock</button>
+        <button class="btn btn-outline w-full mt-3" id="bio-signout-btn" style="max-width:280px;">Sign Out Instead</button>
+      `;
+      document.getElementById('bio-unlock-btn').onclick = attempt;
+      document.getElementById('bio-signout-btn').onclick = () => {
+        window.GeoApp.logout();
+        window.GeoBiometric.setEnabled(false);
+        overlay.remove();
+        onUnlocked();
+      };
+    }
+    async function attempt() {
+      try {
+        await window.GeoBiometric.authenticate('Unlock GeoEstate');
+        overlay.remove();
+        onUnlocked();
+      } catch (e) {
+        render(e.message || 'Authentication failed — try again');
+      }
+    }
+    document.body.appendChild(overlay);
+    render();
+    attempt(); // prompt immediately on cold start, no extra tap required
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     function boot() {
       renderShell();
@@ -377,10 +413,18 @@
       const initial = (location.hash || '#home').replace('#', '') || 'home';
       go(initial);
     }
+    function bootWithBiometricGate() {
+      const hasSession = !!(window.GeoAPI.getUser() || window.GeoAPI.getOwnerSession());
+      if (hasSession && window.GeoBiometric.isEnabled()) {
+        showBiometricLockScreen(boot);
+      } else {
+        boot();
+      }
+    }
     if (!localStorage.getItem('geo_onboarding_seen')) {
-      showOnboarding(boot);
+      showOnboarding(bootWithBiometricGate);
     } else {
-      boot();
+      bootWithBiometricGate();
     }
   });
 })(window);

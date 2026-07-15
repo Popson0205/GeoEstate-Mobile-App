@@ -40,6 +40,7 @@
         ${renderRow('🔔','Saved Searches','Get matched automatically',"GeoProfile.showSavedSearches()")}
         ${renderRow('📁','Document Vault','Your ID, receipts & documents',"GeoProfile.showDocumentVault()")}
         ${renderRow('🧮','Affordability Calculator','What can I afford?',"GeoProfile.showAffordabilityCalculator()")}
+        ${renderRow('🔒','Biometric Lock','Fingerprint / Face ID app lock',"GeoProfile.showBiometricSettings()")}
         ${renderRow('👥','Our Team','','GeoRouter.go(\'team\')')}
         ${renderRow('📞','Contact Us','','GeoRouter.go(\'contact\')')}
         ${renderRow('📄','Privacy Policy','','GeoUtil.toast(\'Opens Privacy Policy\')')}
@@ -231,7 +232,52 @@
     `);
   }
 
-  window.GeoProfile = { showSaved, unsaveAndRefresh, showRecentlyViewed, showSavedSearches, removeSearchAndRefresh, showDocumentVault, showAffordabilityCalculator, showCompare };
+  async function showBiometricSettings() {
+    openSheet(`
+      <div class="sheet__header"><div class="h4">Biometric Lock</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4" id="bio-settings-body"><div class="page-loading"><div class="spinner"></div></div></div>
+    `);
+    const body = document.getElementById('bio-settings-body');
+    const info = await window.GeoBiometric.checkAvailable();
+    if (!info.isAvailable) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🔒</div><div class="empty-state__title">Not available</div><div class="empty-state__sub">${esc(info.reason || 'Your device has no fingerprint or face unlock set up, or this app doesn\'t have permission to use it. Set up biometrics in your device settings first.')}</div></div>`;
+      return;
+    }
+    const enabled = window.GeoBiometric.isEnabled();
+    body.innerHTML = `
+      <div class="geo-card flex justify-between items-center mb-3">
+        <div>
+          <div class="font-bold text-sm">Require unlock on launch</div>
+          <div class="text-xs text-muted mt-1">Use your fingerprint or face to open GeoEstate instead of staying signed in automatically.</div>
+        </div>
+        <label style="display:flex;align-items:center;flex-shrink:0;margin-left:12px;">
+          <input type="checkbox" id="bio-toggle" ${enabled ? 'checked' : ''} style="width:20px;height:20px;">
+        </label>
+      </div>
+      <div class="text-xs text-muted">This only locks the app on this device — it doesn't change how you sign in to your account.</div>
+    `;
+    document.getElementById('bio-toggle').onchange = async (e) => {
+      const cb = e.target;
+      if (cb.checked) {
+        // Confirm biometrics actually work on this device before relying on
+        // them to gate the whole app — avoids a user enabling this and then
+        // getting stuck unable to unlock because of a misconfigured sensor.
+        try {
+          await window.GeoBiometric.authenticate('Confirm to enable Biometric Lock');
+          window.GeoBiometric.setEnabled(true);
+          toast('Biometric Lock enabled', 'success');
+        } catch (err) {
+          cb.checked = false;
+          toast(err.message || 'Could not verify biometrics — lock not enabled', 'error');
+        }
+      } else {
+        window.GeoBiometric.setEnabled(false);
+        toast('Biometric Lock disabled');
+      }
+    };
+  }
+
+  window.GeoProfile = { showSaved, unsaveAndRefresh, showRecentlyViewed, showSavedSearches, removeSearchAndRefresh, showDocumentVault, showAffordabilityCalculator, showCompare, showBiometricSettings };
 
   window.GeoRouter.register('profile', render);
 })(window);
