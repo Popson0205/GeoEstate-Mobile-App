@@ -21,7 +21,11 @@
   }
 
   function getPlugin() {
-    return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BiometricAuth) || null;
+    // The plugin registers on the native bridge as "BiometricAuthNative"
+    // (see registerPlugin('BiometricAuthNative', ...) in its own source),
+    // not "BiometricAuth" — that mismatch was the actual reason this always
+    // reported "not available" regardless of the device's real capability.
+    return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BiometricAuthNative) || null;
   }
 
   // Returns { isAvailable, biometryType, ... } — isAvailable is false (not
@@ -37,12 +41,17 @@
     }
   }
 
-  // Resolves on success, rejects with a BiometryError-shaped object on
-  // failure/cancel — callers should catch and show err.message.
+  // Resolves on success, rejects on failure/cancel — callers should catch
+  // and show err.message. The raw native bridge only exposes checkBiometry
+  // and internalAuthenticate directly; the nicer authenticate() wrapper
+  // (with error re-typing) only exists in the package's JS base class,
+  // which this vanilla script-tag project has no bundler to import — so
+  // this calls internalAuthenticate directly instead, which does the same
+  // native work.
   async function authenticate(reason) {
     const plugin = getPlugin();
     if (!plugin) throw new Error('Biometric authentication is not available on this device');
-    await plugin.authenticate({
+    await plugin.internalAuthenticate({
       reason: reason || 'Unlock GeoEstate',
       androidTitle: 'Biometric Login',
       androidSubtitle: 'Use your fingerprint or face to unlock GeoEstate',
