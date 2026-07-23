@@ -218,8 +218,8 @@
     document.getElementById('auth-title').textContent = mode === 'login' ? 'Sign In' : 'Create Account';
     if (mode === 'login') {
       body.innerHTML = `
-        <div class="field"><label>Email</label><input class="input" id="li-email" type="email" placeholder="you@example.com"></div>
-        <div class="field"><label>Password</label><input class="input" id="li-pass" type="password" placeholder="••••••••"></div>
+        <div class="field"><label>Email</label><input class="input" id="li-email" type="email" placeholder="you@example.com" autocomplete="username" name="email"></div>
+        <div class="field"><label>Password</label><input class="input" id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password" name="password"></div>
         <button class="btn btn-primary btn-block" id="li-submit">Sign In</button>
         <div class="text-center text-sm text-muted mt-4">No account? <a class="text-accent font-bold" onclick="GeoApp.switchAuth('register')">Register</a></div>
         <div class="divider"></div>
@@ -261,9 +261,9 @@
           <div class="field w-full"><label>First name</label><input class="input" id="r-fname"></div>
           <div class="field w-full"><label>Last name</label><input class="input" id="r-lname"></div>
         </div>
-        <div class="field"><label>Email</label><input class="input" id="r-email" type="email"></div>
+        <div class="field"><label>Email</label><input class="input" id="r-email" type="email" autocomplete="username" name="email"></div>
         <div class="field"><label>Phone</label><input class="input" id="r-phone" type="tel"></div>
-        <div class="field"><label>Password</label><input class="input" id="r-pass" type="password"></div>
+        <div class="field"><label>Password</label><input class="input" id="r-pass" type="password" autocomplete="new-password" name="new-password"></div>
         <div class="field"><label>I am a</label>
           <select class="input" id="r-role"><option value="renter">Renter / Buyer</option><option value="owner">Property Owner</option></select>
         </div>
