@@ -234,6 +234,7 @@
           await API.userLogin(email, pass);
           toast('Welcome back!', 'success');
           if (window.GeoPush) window.GeoPush.init();
+          loadNotifications();
           closeSheet(); renderHeaderAvatar(); go(state.route, state.params);
         } catch (err) { toast(err.message || 'Login failed', 'error'); }
         setBtnLoading(e.target, false, 'Sign In');
@@ -286,6 +287,7 @@
           toast('Account created — signing you in…', 'success');
           try { await API.userLogin(email, pass); } catch (e2) {}
           if (window.GeoPush) window.GeoPush.init();
+          loadNotifications();
           closeSheet(); renderHeaderAvatar(); go(state.route, state.params);
         } catch (err) { toast(err.message || 'Registration failed', 'error'); }
         setBtnLoading(e.target, false, 'Create Account');
@@ -309,16 +311,80 @@
         await API.ownerVerifyOTP(email, code);
         toast('Welcome, owner!', 'success');
         if (window.GeoPush) window.GeoPush.init();
+        loadNotifications();
         closeSheet(); renderHeaderAvatar(); go('owner');
       } catch (err) { toast(err.message || 'Invalid code', 'error'); }
       setBtnLoading(e.target, false, 'Verify & Sign In');
     };
   }
 
+  // ---- Notifications (real backend) ----
+  let cachedNotifications = [];
+
+  async function loadNotifications() {
+    if (!(API.getUser() || API.getOwnerSession())) return;
+    try {
+      cachedNotifications = await API.getNotifications();
+    } catch (e) { /* keep showing whatever loaded last rather than clearing on a transient failure */ }
+    const dot = document.getElementById('notif-dot');
+    if (dot) dot.classList.toggle('hidden', !cachedNotifications.some(n => !n.read_at));
+  }
+
+  function openNotifications() {
+    if (!(API.getUser() || API.getOwnerSession())) {
+      toast('Sign in to see your notifications', 'error');
+      window.GeoApp.openAuth('login');
+      return;
+    }
+    const hasUnread = cachedNotifications.some(n => !n.read_at);
+    openSheet(`
+      <div class="sheet__header">
+        <div class="h4">Notifications</div>
+        <div class="flex items-center gap-2">
+          ${hasUnread ? `<button class="btn btn-outline btn-sm" onclick="GeoApp.markAllNotifsRead()">Mark all read</button>` : ''}
+          <button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button>
+        </div>
+      </div>
+      <div class="px-4" id="notif-list"></div>
+    `);
+    renderNotifList();
+  }
+
+  function timeAgo(dateStr) {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return days + 'd ago';
+    return new Date(dateStr).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+  }
+
+  function renderNotifList() {
+    const list = document.getElementById('notif-list');
+    if (!list) return;
+    list.innerHTML = cachedNotifications.length ? cachedNotifications.map(n => `
+      <div class="geo-card mb-2" style="${n.read_at ? '' : 'box-shadow:inset 0 0 0 1px var(--g-400)'}">
+        <div class="font-bold text-sm">${esc(n.title || '')}</div>
+        ${n.body ? `<div class="text-xs text-muted mt-1">${esc(n.body)}</div>` : ''}
+        <div class="text-xs text-muted mt-2">${timeAgo(n.created_at)}</div>
+      </div>
+    `).join('') : `<div class="empty-state"><div class="empty-state__icon">🎉</div><div class="empty-state__sub">You're all caught up</div></div>`;
+  }
+
+  async function markAllNotifsRead() {
+    try { await API.markNotificationsRead(); } catch (e) {}
+    await loadNotifications();
+    renderNotifList();
+  }
+
   window.GeoApp = {
     openAuth,
     switchAuth: renderAuthBody,
-    openNotifications() { toast('No new notifications'); },
+    openNotifications,
+    markAllNotifsRead,
     logout() {
       API.logoutUser(); API.logoutOwner();
       toast('Signed out');
@@ -420,6 +486,7 @@
       if ((window.GeoAPI.getUser() || window.GeoAPI.getOwnerSession()) && window.GeoPush) {
         window.GeoPush.init();
       }
+      loadNotifications();
       const initial = (location.hash || '#home').replace('#', '') || 'home';
       go(initial);
     }
@@ -437,4 +504,9 @@
       bootWithBiometricGate();
     }
   });
+
+  // Polls for new notifications every 30s while signed in — matches the
+  // interval the chat feature already uses on this same app rather than
+  // needing a separate SSE wiring just for this.
+  setInterval(() => { if (window.GeoAPI.getUser() || window.GeoAPI.getOwnerSession()) loadNotifications(); }, 30000);
 })(window);

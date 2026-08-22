@@ -192,6 +192,10 @@
     },
     async registerPushToken(token) { return ownerReq('/owner/push-token', { method: 'POST', body: { push_token: token } }); },
 
+    // In-app notification center
+    async getNotifications() { const d = await ownerReq('/owner/notifications'); return d.notifications || []; },
+    async markNotificationsRead(id) { return ownerReq('/owner/notifications/mark-read', { method: 'POST', body: id ? { id } : {} }); },
+
     // ---- Favorites ----
     async getFavorites() { const d = await ownerReq('/owner/favorites'); return (d.favorites || []).map(mapProperty); },
     async addFavorite(propertyId) { return ownerReq('/owner/favorites', { method: 'POST', body: { property_id: propertyId } }); },
