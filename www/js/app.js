@@ -233,6 +233,7 @@
         try {
           await API.userLogin(email, pass);
           toast('Welcome back!', 'success');
+          if (window.GeoPush) window.GeoPush.init();
           closeSheet(); renderHeaderAvatar(); go(state.route, state.params);
         } catch (err) { toast(err.message || 'Login failed', 'error'); }
         setBtnLoading(e.target, false, 'Sign In');
@@ -284,6 +285,7 @@
           await API.register({ fname, lname, email, phone, role, pass: passB64, registeredAt: new Date().toISOString() });
           toast('Account created — signing you in…', 'success');
           try { await API.userLogin(email, pass); } catch (e2) {}
+          if (window.GeoPush) window.GeoPush.init();
           closeSheet(); renderHeaderAvatar(); go(state.route, state.params);
         } catch (err) { toast(err.message || 'Registration failed', 'error'); }
         setBtnLoading(e.target, false, 'Create Account');
@@ -306,6 +308,7 @@
       try {
         await API.ownerVerifyOTP(email, code);
         toast('Welcome, owner!', 'success');
+        if (window.GeoPush) window.GeoPush.init();
         closeSheet(); renderHeaderAvatar(); go('owner');
       } catch (err) { toast(err.message || 'Invalid code', 'error'); }
       setBtnLoading(e.target, false, 'Verify & Sign In');
@@ -410,6 +413,13 @@
     function boot() {
       renderShell();
       initPullToRefresh();
+      // Registering push here (rather than in each individual login/register
+      // handler) covers every path that leads to a live session — fresh
+      // login, a biometric-unlocked existing session, or one that was
+      // already persisted from before — with a single call.
+      if ((window.GeoAPI.getUser() || window.GeoAPI.getOwnerSession()) && window.GeoPush) {
+        window.GeoPush.init();
+      }
       const initial = (location.hash || '#home').replace('#', '') || 'home';
       go(initial);
     }

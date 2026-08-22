@@ -177,6 +177,21 @@
     async ownerEnquiries() { const d = await ownerReq('/owner/enquiries'); return d.enquiries || []; },
     async ownerTenancies() { const d = await ownerReq('/owner/tenancies'); return d.tenancies || []; },
 
+    // ---- In-app chat & push token ----
+    // Uses the same owner-session bearer token any logged-in user (owner or
+    // renter/buyer — see userLogin() bridging above) already carries, since
+    // the backend's requireOwner() validates a token from either.
+    async getConversations() { const d = await ownerReq('/owner/conversations'); return d.conversations || []; },
+    async getThread(otherId, propertyId) {
+      const qs = '?with=' + encodeURIComponent(otherId) + (propertyId ? '&property_id=' + encodeURIComponent(propertyId) : '');
+      const d = await ownerReq('/owner/messages' + qs);
+      return d.messages || [];
+    },
+    async sendMessage(recipientId, body, propertyId, senderName) {
+      return ownerReq('/owner/messages', { method: 'POST', body: { recipient_id: recipientId, body, property_id: propertyId || null, sender_name: senderName || '' } });
+    },
+    async registerPushToken(token) { return ownerReq('/owner/push-token', { method: 'POST', body: { push_token: token } }); },
+
     // ---- Favorites ----
     async getFavorites() { const d = await ownerReq('/owner/favorites'); return (d.favorites || []).map(mapProperty); },
     async addFavorite(propertyId) { return ownerReq('/owner/favorites', { method: 'POST', body: { property_id: propertyId } }); },
