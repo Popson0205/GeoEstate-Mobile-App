@@ -59,8 +59,14 @@
       });
       await plugin.addListener('pushNotificationActionPerformed', (action) => {
         const data = action.notification && action.notification.data;
-        if (data && data.type === 'chat' && window.GeoRouter) {
-          window.GeoRouter.go('chat-thread', { with: data.sender_id, property_id: data.property_id || '' });
+        if (data && data.type === 'chat' && window.GeoChat) {
+          // Chat is a sheet (GeoChat.openChatThread), not a router page — the
+          // structured push data only carries sender_id/property_id; the
+          // sender's display name only exists in the notification's own
+          // title (set server-side to sender_name || 'New message'), so
+          // that's used as a reasonable fallback here.
+          const otherName = (action.notification.title || 'User');
+          window.GeoChat.openChatThread(data.sender_id, otherName, data.property_id || '', '');
         }
       });
 
