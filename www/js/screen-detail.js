@@ -133,6 +133,7 @@
         </div>
       </div>
       <div class="geo-section" style="position:sticky;bottom:0;background:var(--bg-app);border-top:1px solid var(--border-soft);">
+        <button class="btn btn-primary w-full mb-3" id="detail-message-owner">💬 Message Owner</button>
         <div class="flex gap-3">
           <button class="btn btn-outline w-full" id="detail-whatsapp">💬 WhatsApp</button>
           <button class="btn btn-primary w-full" id="detail-enquire">Enquire Now</button>
@@ -140,6 +141,12 @@
       </div>
     `;
 
+    document.getElementById('detail-message-owner').onclick = () => {
+      if (!p.owner_id) { toast('This property has no owner on record yet', 'error'); return; }
+      const user = API.getUser() || (API.getOwnerSession() || {}).owner;
+      if (user && p.owner_id === user.id) { toast("You can't message yourself", 'error'); return; }
+      window.GeoChat.openChatThread(p.owner_id, p.owner || 'Owner', p.id, p.title);
+    };
     document.getElementById('detail-enquire').onclick = () => openEnquiryForm(p);
     document.getElementById('detail-start-txn').onclick = () => openPaymentSheet(p);
     const unitEnquireBtn = document.getElementById('detail-unit-enquire');

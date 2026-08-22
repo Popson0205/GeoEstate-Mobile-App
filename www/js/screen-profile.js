@@ -36,6 +36,7 @@
         ${ownerSession ? renderRow('🗂️','Owner Dashboard','Manage your listings',"GeoRouter.go('owner')") : ''}
         ${ownerSession && !ownerSession.owner.is_verified ? renderRow('🪪','Verify Identity','Required to list properties',"GeoRouter.go('verify')") : ''}
         ${renderRow('❤️','Saved Properties','',"GeoProfile.showSaved()")}
+        ${renderRow('💬','Messages','Chat with owners about listings',"GeoChat.openConversationsList()")}
         ${renderRow('🕒','Recently Viewed','',"GeoProfile.showRecentlyViewed()")}
         ${renderRow('🔔','Saved Searches','Get matched automatically',"GeoProfile.showSavedSearches()")}
         ${renderRow('📁','Document Vault','Your ID, receipts & documents',"GeoProfile.showDocumentVault()")}
