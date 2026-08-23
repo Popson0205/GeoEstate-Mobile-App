@@ -23,6 +23,25 @@
       main.innerHTML = `<div class="empty-state"><div class="empty-state__icon">👤</div><div class="empty-state__title">Not signed in</div><div class="empty-state__sub mb-6">Sign in to manage your profile, saved properties, and settings.</div><button class="btn btn-primary" onclick="GeoApp.openAuth('login')">Sign In</button></div>`;
       return;
     }
+
+    // person.is_verified (and ownerSession.owner.is_verified) is whatever
+    // was cached at login time — it never updates on its own, so someone
+    // verified *after* logging in would keep seeing "Verify Identity"
+    // here indefinitely until they logged out and back in. /owner/profile
+    // works for any registered user regardless of role (not owner-specific
+    // despite the URL), so fetch it fresh and sync the result back into
+    // the cached session too, so other screens benefit from this same
+    // navigation instead of only this one render.
+    let isVerified = !!person.is_verified;
+    try {
+      const fresh = await API.ownerProfile();
+      if (fresh && typeof fresh.is_verified === 'boolean') {
+        isVerified = fresh.is_verified;
+        if (ownerSession) { ownerSession.owner.is_verified = isVerified; API.setOwnerSession(ownerSession); }
+        if (user) { user.is_verified = isVerified; user.verified = isVerified; API.setUser(user); }
+      }
+    } catch (e) { /* keep showing whatever was cached rather than blocking the whole screen on a transient failure */ }
+
     const initials = ((person.fname||person.name||'U')[0] + (person.lname?person.lname[0]:'')).toUpperCase();
     main.innerHTML = `
       <div class="geo-section text-center">
@@ -30,11 +49,11 @@
           : `<div class="geo-avatar geo-avatar--placeholder" style="width:72px;height:72px;font-size:24px;margin:0 auto;">${esc(initials)}</div>`}
         <div class="h4 mt-3">${esc((person.fname||person.name||'')+' '+(person.lname||''))}</div>
         <div class="text-muted text-sm">${esc(person.email||'')}</div>
-        ${person.is_verified || ownerSession ? '<span class="pill pill--green mt-2">✓ Verified</span>' : ''}
+        ${isVerified ? '<span class="pill pill--green mt-2">✓ Verified</span>' : ''}
       </div>
       <div class="geo-section" style="padding-top:0;">
         ${ownerSession ? renderRow('🗂️','Owner Dashboard','Manage your listings',"GeoRouter.go('owner')") : ''}
-        ${ownerSession && !ownerSession.owner.is_verified ? renderRow('🪪','Verify Identity','Required to list properties',"GeoRouter.go('verify')") : ''}
+        ${!isVerified ? renderRow('🪪','Verify Identity','Required to list properties',"GeoRouter.go('verify')") : ''}
         ${renderRow('❤️','Saved Properties','',"GeoProfile.showSaved()")}
         ${renderRow('💬','Messages','Chat with owners about listings',"GeoChat.openConversationsList()")}
         ${renderRow('🕒','Recently Viewed','',"GeoProfile.showRecentlyViewed()")}
@@ -44,8 +63,8 @@
         ${renderRow('🔒','Biometric Lock','Fingerprint / Face ID app lock',"GeoProfile.showBiometricSettings()")}
         ${renderRow('👥','Our Team','','GeoRouter.go(\'team\')')}
         ${renderRow('📞','Contact Us','','GeoRouter.go(\'contact\')')}
-        ${renderRow('📄','Privacy Policy','','GeoUtil.toast(\'Opens Privacy Policy\')')}
-        ${renderRow('📃','Terms of Service','','GeoUtil.toast(\'Opens Terms\')')}
+        ${renderRow('📄','Privacy Policy','','GeoProfile.showPrivacyPolicy()')}
+        ${renderRow('📃','Terms of Service','','GeoProfile.showTermsOfService()')}
       </div>
       <div class="geo-section" style="padding-top:0;">
         <button class="btn btn-outline btn-block" id="profile-logout">Sign Out</button>
@@ -278,7 +297,95 @@
     };
   }
 
-  window.GeoProfile = { showSaved, unsaveAndRefresh, showRecentlyViewed, showSavedSearches, removeSearchAndRefresh, showDocumentVault, showAffordabilityCalculator, showCompare, showBiometricSettings };
+  // ── Privacy Policy & Terms of Service ────────────────────────────────
+  // Real content, replacing what were previously literal placeholder
+  // toasts ("Opens Privacy Policy" / "Opens Terms" as their actual text,
+  // never any real content). Written for GeoEstate specifically, but this
+  // is not a substitute for a lawyer's review before relying on it.
+  const PRIVACY_POLICY = `Last updated: 2026
+
+GeoEstate ("we", "our", "us") operates a property listing and rental/sale platform for Nigeria. This policy explains what information we collect and how we use it.
+
+INFORMATION WE COLLECT
+• Account details: name, email, phone number, and password (stored securely, never in plain text).
+• Identity verification: NIN, date of birth, occupation, address, and a selfie/ID photo, submitted when you verify your identity as required to list a property.
+• Property information: listings, photos, videos, and documents you upload as an owner.
+• Transaction records: payment references, receipts, and tenancy/agreement details for properties you rent, lease, or buy through the platform.
+• Messages: conversations sent through in-app chat.
+• Usage data: which listings you view, so owners can see basic performance stats on their own properties.
+
+HOW WE USE YOUR INFORMATION
+• To verify property owners and reduce fraud on the platform.
+• To connect you with the GeoEstate team regarding a listing you're interested in.
+• To process and confirm payments, and to generate tenancy agreements.
+• To send you notifications about enquiries, payments, and tenancy renewals.
+• To improve the platform based on how it's actually used.
+
+WHO WE SHARE IT WITH
+• Property owners, only the information relevant to a specific enquiry or transaction.
+• Service providers we rely on to run the platform (secure file storage, push notification delivery) — they only receive what's needed to provide that service.
+• Law enforcement, where legally required, particularly in connection with our fraud/dispute resolution process.
+
+We do not sell your personal information to third parties.
+
+YOUR RIGHTS
+You can request a copy of your data, ask us to correct inaccurate information, or request account deletion by contacting us. Some information (like transaction records) may be retained where we have a legal obligation to keep it.
+
+DATA SECURITY
+We use industry-standard measures to protect your data, including encrypted storage and secure authentication. No system is 100% secure, and we encourage you to use a strong, unique password.
+
+CONTACT US
+Questions about this policy can be sent through the Contact Us page in this app.`;
+
+  const TERMS_OF_SERVICE = `Last updated: 2026
+
+By using GeoEstate, you agree to these terms.
+
+1. WHAT GEOESTATE IS
+GeoEstate is a platform connecting property owners with people looking to rent, lease, or buy property in Nigeria. We verify property owners' identities and, where noted, conduct a physical site visit — but we do not own, manage, or guarantee any property listed by a third-party owner.
+
+2. ACCOUNTS
+You must provide accurate information when registering. You're responsible for keeping your login credentials secure, including any biometric lock you enable on your device.
+
+3. LISTING A PROPERTY
+Owners must complete identity verification before listing. Listings must be accurate — misrepresenting a property's condition, ownership, or availability may result in the listing being removed and the account suspended.
+
+4. PAYMENTS
+Payments made through GeoEstate are manually confirmed by our team before being released to an owner. Always use the reference code provided and never transfer money outside the process shown in the app. GeoEstate charges a platform fee, shown before you complete a transaction.
+
+5. TENANCY AGREEMENTS
+Once a rent or lease payment is confirmed, a tenancy agreement is generated automatically from the transaction details and can be signed electronically by both parties within the app. This is a convenience feature; for high-value or complex agreements, we recommend independent legal advice.
+
+6. DISPUTES
+If something goes wrong, use the in-app enquiry/support channels first. Serious disputes (fraud, non-delivery, safety concerns) may be escalated through our dispute resolution process, which can involve referral to the appropriate authorities.
+
+7. PROHIBITED CONDUCT
+You may not use GeoEstate to list property you don't have the right to list, to harass another user, to circumvent our payment process, or to attempt to defraud another party.
+
+8. LIMITATION OF LIABILITY
+GeoEstate facilitates connections and transactions between owners and customers but is not a party to the tenancy or sale itself. We work to verify owners and properties, but we cannot guarantee every detail of a listing is accurate.
+
+9. CHANGES TO THESE TERMS
+We may update these terms as the platform evolves. Continued use of the app after a change means you accept the updated terms.
+
+10. CONTACT
+Questions about these terms can be sent through the Contact Us page in this app.`;
+
+  function showPrivacyPolicy() {
+    openSheet(`
+      <div class="sheet__header"><div class="h4">Privacy Policy</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4" style="max-height:65vh;overflow-y:auto;white-space:pre-wrap;font-size:.82rem;line-height:1.6;color:var(--text-secondary,#a9c2b3)">${esc(PRIVACY_POLICY)}</div>
+    `);
+  }
+
+  function showTermsOfService() {
+    openSheet(`
+      <div class="sheet__header"><div class="h4">Terms of Service</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4" style="max-height:65vh;overflow-y:auto;white-space:pre-wrap;font-size:.82rem;line-height:1.6;color:var(--text-secondary,#a9c2b3)">${esc(TERMS_OF_SERVICE)}</div>
+    `);
+  }
+
+  window.GeoProfile = { showSaved, unsaveAndRefresh, showRecentlyViewed, showSavedSearches, removeSearchAndRefresh, showDocumentVault, showAffordabilityCalculator, showCompare, showBiometricSettings, showPrivacyPolicy, showTermsOfService };
 
   window.GeoRouter.register('profile', render);
 })(window);
