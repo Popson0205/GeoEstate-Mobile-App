@@ -5,16 +5,27 @@
 // plugin, verified against its actual registerPlugin() call — unlike the
 // biometric plugin, the JS export name and the bridge name match exactly).
 //
-// IMPORTANT: this can only actually deliver notifications once the native
-// Android project has google-services.json (Firebase project credentials)
-// and the backend has SECRET_FCM_SERVICE_ACCOUNT configured on Railway.
-// Without those, register() below will typically fail quietly (no
-// 'registration' event ever fires) — every call here is written to degrade
-// gracefully rather than throw, so the rest of the app is unaffected either
-// way.
+// FCM_CONFIGURED must be flipped to true only once BOTH of these are done:
+//   1. android/app/google-services.json (real Firebase project credentials)
+//      is added to this repo and the Google Services Gradle plugin is
+//      applied — without this, PushNotificationsPlugin.register() calls
+//      FirebaseMessaging.getInstance() directly, which throws a native
+//      IllegalStateException ("Default FirebaseApp is not initialized")
+//      because FirebaseApp was never initialized. That's not something a
+//      JS try/catch can catch — it crashes the whole app process (this is
+//      exactly what happened: "GeoEstate keeps stopping" right after
+//      granting notification permission, since permission-grant is what
+//      triggered the next step, register()).
+//   2. SECRET_FCM_SERVICE_ACCOUNT is set on the backend (Railway), so a
+//      registered token actually has somewhere real to receive a push.
+// Until both are true, this module intentionally does nothing at all —
+// not even requesting notification permission, since there'd be no point
+// prompting for a permission the app can't yet use.
 // ============================================================
 (function (window) {
   'use strict';
+
+  const FCM_CONFIGURED = false;
 
   function getPlugin() {
     return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) || null;
@@ -27,6 +38,7 @@
   let initialized = false;
 
   async function init() {
+    if (!FCM_CONFIGURED) return;
     if (initialized) return;
     const plugin = getPlugin();
     if (!plugin) return; // web preview, or native module not linked yet
