@@ -11,6 +11,7 @@
   'use strict';
 
   const { esc, toast, openSheet, closeSheet } = window.GeoUtil;
+  const API = window.GeoAPI;
 
   let pollTimer = null;
 
