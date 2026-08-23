@@ -79,7 +79,13 @@
       price: displayPrice || p.price || '—',
       location: [p.lga, p.state].filter(Boolean).join(', ') || p.address || '—',
       images, amenities,
-      img: p.img || images[0] || ''
+      img: p.img || images[0] || '',
+      // Real owner identity verification (a join the backend does against
+      // registrations.is_verified), plus the second, stronger site-visit
+      // tier — neither existed on mobile before; the website's equivalent
+      // was hardcoded to true for every property regardless of anything real.
+      verified: !!p.owner_verified,
+      site_visit_verified: !!p.site_visit_verified
     });
   }
 

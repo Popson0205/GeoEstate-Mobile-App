@@ -15,6 +15,7 @@
         <div class="prop-card__img">
           ${img}
           <span class="pill pill--green prop-card__badge">${esc((p.listing_type||'rent').toUpperCase())}</span>
+          ${p.verified ? `<span class="pill pill--green" style="position:absolute;top:8px;right:8px;">✓</span>` : ''}
         </div>
         <div class="prop-card__body">
           <div class="prop-card__price">${esc(p.price)}</div>
@@ -101,7 +102,7 @@
 
     try {
       const props = await API.listProperties({});
-      document.getElementById('stat-verified').textContent = props.length;
+      document.getElementById('stat-verified').textContent = props.filter(p => p.verified).length;
       const list = document.getElementById('home-listings');
       if (!props.length) {
         list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🏘️</div><div class="empty-state__title">No listings yet</div><div class="empty-state__sub">New verified properties are added regularly — check back soon.</div></div>`;

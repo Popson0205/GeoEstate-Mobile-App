@@ -76,6 +76,10 @@
       <div class="geo-section">
         <div class="h2">${esc(p.price)}</div>
         <div class="h4 mt-2" style="font-weight:600;">${esc(p.title)}</div>
+        ${(p.verified || p.site_visit_verified) ? `<div class="flex gap-2 mt-2" style="flex-wrap:wrap">
+          ${p.verified ? `<span class="pill pill--green">✓ Owner ID Verified</span>` : ''}
+          ${p.site_visit_verified ? `<span class="pill" style="background:rgba(59,130,246,.15);color:#60a5fa;border-color:rgba(59,130,246,.3)">🏠 Site Visit Verified</span>` : ''}
+        </div>` : ''}
         <div class="text-muted text-sm mt-2">📍 ${esc(p.address || p.location)}</div>
         <div id="detail-owner-rating" class="text-xs text-muted mt-2"></div>
 
