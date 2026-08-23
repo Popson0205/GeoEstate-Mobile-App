@@ -231,6 +231,7 @@
     clearRecentlyViewed() { localStorage.removeItem('geo_recently_viewed'); },
     async ownerUnits(propId) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units'); },
     async ownerAddUnit(propId, payload) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units', { method: 'POST', body: payload }); },
+    async ownerBulkAddUnits(propId, units) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units/bulk', { method: 'POST', body: { units } }); },
     async ownerUpdateUnit(propId, unitId, payload) { return ownerReq('/owner/property/' + encodeURIComponent(propId) + '/units/' + unitId, { method: 'PATCH', body: payload }); },
 
     // ---- Uploads (Supabase signed PUT) ----

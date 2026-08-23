@@ -971,6 +971,7 @@
           <button type="button" class="btn btn-outline btn-sm w-full" id="unit-photo-btn">📸 Upload Photo</button>
           <input type="hidden" id="unit-photo">
         </div>
+        <button class="btn btn-outline btn-block mb-2" onclick="GeoOwner.openBulkImportSheet('${propId}','${esc(title).replace(/'/g,"\\'")}')">📄 Bulk Import (CSV)</button>
         <button class="btn btn-primary btn-block" id="unit-add">Add Unit</button>
       `;
       document.getElementById('unit-photo-btn').onclick = () => {
@@ -1092,6 +1093,115 @@
     }
   }
 
-  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, showTenancyTracker, loadOwnerProperties };
+  // ── Bulk unit import (CSV) ──────────────────────────────────────────────
+  // Same lightweight, dependency-free parser as the website — handles
+  // quoted fields with embedded commas/newlines and "" as an escaped quote.
+  function parseUnitsCsv(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], next = text[i + 1];
+      if (inQuotes) {
+        if (c === '"' && next === '"') { field += '"'; i++; }
+        else if (c === '"') { inQuotes = false; }
+        else { field += c; }
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n' || c === '\r') {
+          if (c === '\r' && next === '\n') i++;
+          row.push(field); field = '';
+          if (row.some(f => f.trim() !== '')) rows.push(row);
+          row = [];
+        } else { field += c; }
+      }
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    if (!rows.length) return [];
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    return rows.slice(1).map(r => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = (r[i] || '').trim(); });
+      return obj;
+    }).filter(o => o.unit_label);
+  }
+
+  function downloadUnitCsvTemplate() {
+    const csv = 'unit_label,unit_type,floor_level,capacity,monthly_price,description,notes\n'
+      + 'Room 101,room,Ground,1,45000,Self-contained room with private bathroom,\n'
+      + 'Room 102,room,Ground,1,45000,Self-contained room with private bathroom,\n'
+      + 'Flat 2A,flat,1st,4,180000,3-bedroom flat with balcony,';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'geoestate-units-template.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function openBulkImportSheet(propId, title) {
+    let parsedRows = [];
+    const html = `
+      <div class="sheet__header"><div class="h4">Bulk Import Units</div><button class="geo-icon-btn" onclick="GeoOwner.openUnits('${propId}','${title.replace(/'/g,"\\'")}')">✕</button></div>
+      <div class="px-4">
+        <div class="text-xs text-muted mb-3">For properties with many rooms/flats — add dozens of units at once. Columns: unit_label, unit_type, floor_level, capacity, monthly_price, description, notes. Only unit_label is required. Photos can't be imported via CSV — add those per unit afterward.</div>
+        <button type="button" class="btn btn-outline btn-sm w-full mb-3" id="bulk-template-btn">⬇️ Download CSV Template</button>
+        <div class="field"><label>CSV File</label></div>
+        <button type="button" class="btn btn-outline btn-block mb-3" id="bulk-pick-file-btn">📎 Choose CSV File</button>
+        <div id="bulk-preview" class="text-xs text-muted mb-3"></div>
+        <div id="bulk-result" class="text-xs mb-3"></div>
+        <button class="btn btn-primary btn-block" id="bulk-submit-btn" disabled>Import Units</button>
+      </div>
+    `;
+    openSheet(html);
+    document.getElementById('bulk-template-btn').onclick = downloadUnitCsvTemplate;
+    document.getElementById('bulk-pick-file-btn').onclick = () => {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.csv,text/csv';
+      fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+      fileInput.onchange = () => {
+        const file = fileInput.files[0];
+        document.body.removeChild(fileInput);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          parsedRows = parseUnitsCsv(String(reader.result));
+          const preview = document.getElementById('bulk-preview');
+          const submitBtn = document.getElementById('bulk-submit-btn');
+          if (!parsedRows.length) {
+            preview.innerHTML = '<span style="color:var(--red-400)">No valid rows found — make sure the first row has headers and at least a unit_label column.</span>';
+            submitBtn.disabled = true;
+            return;
+          }
+          const shown = parsedRows.slice(0, 8);
+          preview.innerHTML = `<strong>${parsedRows.length} unit${parsedRows.length===1?'':'s'} found:</strong><br>`
+            + shown.map(r => `• ${esc(r.unit_label)}${r.unit_type ? ' (' + esc(r.unit_type) + ')' : ''}${r.monthly_price ? ' — ₦' + Number(r.monthly_price).toLocaleString() : ''}`).join('<br>')
+            + (parsedRows.length > shown.length ? `<br>…and ${parsedRows.length - shown.length} more` : '');
+          submitBtn.disabled = false;
+        };
+        reader.readAsText(file);
+      };
+      fileInput.click();
+    };
+    document.getElementById('bulk-submit-btn').onclick = async (e) => {
+      if (!parsedRows.length) return;
+      setBtnLoading(e.target, true);
+      try {
+        const d = await API.ownerBulkAddUnits(propId, parsedRows);
+        const resultEl = document.getElementById('bulk-result');
+        resultEl.innerHTML = `<span style="color:var(--g-400)">✅ Imported ${d.inserted} unit${d.inserted===1?'':'s'}.</span>`
+          + (d.skipped && d.skipped.length ? `<br><span class="text-muted">${d.skipped.length} row(s) skipped: ${d.skipped.map(s=>'row '+s.row+' ('+s.reason+')').join(', ')}</span>` : '');
+        toast(d.inserted + ' unit(s) imported', 'success');
+        setTimeout(() => openUnits(propId, title), 1200);
+      } catch (err) {
+        toast(err.message || 'Import failed', 'error');
+      }
+      setBtnLoading(e.target, false, 'Import Units');
+    };
+  }
+
+  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, showTenancyTracker, loadOwnerProperties, openBulkImportSheet };
   window.GeoRouter.register('owner', render);
 })(window);
