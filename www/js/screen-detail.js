@@ -138,7 +138,7 @@
         </div>
       </div>
       <div class="geo-section" style="position:sticky;bottom:0;background:var(--bg-app);border-top:1px solid var(--border-soft);">
-        <button class="btn btn-primary w-full mb-3" id="detail-message-owner">💬 Message Owner</button>
+        <button class="btn btn-primary w-full mb-3" id="detail-message-owner">💬 Chat with GeoEstate</button>
         <div class="flex gap-3">
           <button class="btn btn-outline w-full" id="detail-whatsapp">💬 WhatsApp</button>
           <button class="btn btn-primary w-full" id="detail-enquire">Enquire Now</button>
@@ -147,10 +147,15 @@
     `;
 
     document.getElementById('detail-message-owner').onclick = () => {
-      if (!p.owner_id) { toast('This property has no owner on record yet', 'error'); return; }
+      // Customers chat with GeoEstate's team (who manage the transaction),
+      // not with a property's owner directly — SUPPORT_USER_ID is a fixed,
+      // shared account any staff member can log into and answer from (see
+      // ensureSupportAccount() on the backend). property_id/title are still
+      // passed through so staff can see which listing a conversation is about.
+      const SUPPORT_USER_ID = 'SUPPORT-001';
       const user = API.getUser() || (API.getOwnerSession() || {}).owner;
-      if (user && p.owner_id === user.id) { toast("You can't message yourself", 'error'); return; }
-      window.GeoChat.openChatThread(p.owner_id, p.owner || 'Owner', p.id, p.title);
+      if (user && SUPPORT_USER_ID === user.id) { toast("You're already signed in as GeoEstate Support", 'error'); return; }
+      window.GeoChat.openChatThread(SUPPORT_USER_ID, 'GeoEstate Support', p.id, p.title);
     };
     document.getElementById('detail-enquire').onclick = () => openEnquiryForm(p);
     document.getElementById('detail-start-txn').onclick = () => openPaymentSheet(p);
