@@ -195,6 +195,8 @@
     async ownerEnquiries() { const d = await ownerReq('/owner/enquiries'); return d.enquiries || []; },
     async ownerTenancies() { const d = await ownerReq('/owner/tenancies'); return d.tenancies || []; },
     async ownerAnalytics() { return ownerReq('/owner/analytics'); },
+    async getTenancyAgreement(tenancyId) { return ownerReq('/owner/tenancy/' + tenancyId + '/agreement'); },
+    async signTenancyAgreement(tenancyId, signature) { return ownerReq('/owner/tenancy/' + tenancyId + '/agreement/sign', { method: 'POST', body: { signature } }); },
 
     // ---- In-app chat & push token ----
     // Uses the same owner-session bearer token any logged-in user (owner or

@@ -1088,11 +1088,65 @@
               <span>${t.start ? new Date(t.start).toLocaleDateString('en-NG') : '—'} → ${t.end ? new Date(t.end).toLocaleDateString('en-NG') : '—'}</span>
               <span>${days !== null ? (days >= 0 ? days + ' days left' : 'Overdue') : ''}</span>
             </div>
+            <button class="btn btn-outline btn-sm w-full mt-3" onclick="GeoOwner.openAgreementSheet(${t.id})">📝 View / Sign Agreement</button>
           </div>
         `;
       }).join('') + `</div>`;
     } catch (e) {
       document.getElementById('tenancy-body').innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;
+    }
+  }
+
+  // ── E-signature tenancy agreements ──────────────────────────────────────
+  async function openAgreementSheet(tenancyId) {
+    openSheet(`
+      <div class="sheet__header"><div class="h4">Tenancy Agreement</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4" id="agreement-body" style="min-height:200px;"><div class="page-loading"><div class="spinner"></div></div></div>
+    `);
+    await loadAgreement(tenancyId);
+  }
+
+  async function loadAgreement(tenancyId) {
+    const body = document.getElementById('agreement-body');
+    if (!body) return;
+    try {
+      const d = await API.getTenancyAgreement(tenancyId);
+      const ag = d.agreement;
+      const role = d.role;
+      const mySigned = role === 'owner' ? ag.owner_signature : ag.tenant_signature;
+      const mySignedAt = role === 'owner' ? ag.owner_signed_at : ag.tenant_signed_at;
+      body.innerHTML = `
+        <div class="geo-card mb-3" style="max-height:280px;overflow-y:auto;white-space:pre-wrap;font-size:.78rem;line-height:1.6">${esc(ag.content)}</div>
+        <div class="flex justify-between text-xs text-muted mb-3">
+          <span>Owner: ${ag.owner_signature ? '✅ Signed (' + new Date(ag.owner_signed_at).toLocaleDateString('en-NG') + ')' : '⏳ Not signed'}</span>
+          <span>Tenant: ${ag.tenant_signature ? '✅ Signed (' + new Date(ag.tenant_signed_at).toLocaleDateString('en-NG') + ')' : '⏳ Not signed'}</span>
+        </div>
+        ${mySigned
+          ? `<div class="geo-card" style="background:rgba(61,179,116,0.1)"><div class="text-sm">✅ You signed this as <strong>${esc(mySigned)}</strong> on ${new Date(mySignedAt).toLocaleDateString('en-NG')}.</div></div>`
+          : `<div class="field"><label>Type your full legal name to sign</label><input class="input" id="agreement-sign-input" placeholder="e.g. John A. Doe"></div>
+             <div class="text-xs text-muted mb-3">By typing your name and tapping Sign, you're electronically signing this agreement.</div>
+             <button class="btn btn-primary btn-block" id="agreement-sign-btn">✍️ Sign Agreement</button>`
+        }
+      `;
+      const signBtn = document.getElementById('agreement-sign-btn');
+      if (signBtn) signBtn.onclick = (e) => submitAgreementSignature(tenancyId, e.target);
+    } catch (e) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;
+    }
+  }
+
+  async function submitAgreementSignature(tenancyId, btn) {
+    const input = document.getElementById('agreement-sign-input');
+    const signature = input ? input.value.trim() : '';
+    if (!signature) { toast('Please type your full name to sign', 'error'); return; }
+    setBtnLoading(btn, true);
+    try {
+      await API.signTenancyAgreement(tenancyId, signature);
+      toast('Agreement signed ✓', 'success');
+      await loadAgreement(tenancyId);
+    } catch (err) {
+      toast(err.message || 'Could not sign agreement', 'error');
+      setBtnLoading(btn, false, '✍️ Sign Agreement');
     }
   }
 
@@ -1248,6 +1302,6 @@
     };
   }
 
-  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, showTenancyTracker, showAnalytics, loadOwnerProperties, openBulkImportSheet };
+  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, showTenancyTracker, showAnalytics, loadOwnerProperties, openBulkImportSheet, openAgreementSheet };
   window.GeoRouter.register('owner', render);
 })(window);
