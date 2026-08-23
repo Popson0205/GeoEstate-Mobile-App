@@ -58,6 +58,9 @@
           <button class="geo-card clickable" style="text-align:left;" onclick="GeoOwner.showTenancyTracker()">
             <div style="font-size:22px;">📋</div><div class="font-bold text-sm mt-2">Tenancy Tracker</div>
           </button>
+          <button class="geo-card clickable" style="text-align:left;" onclick="GeoOwner.showAnalytics()">
+            <div style="font-size:22px;">📈</div><div class="font-bold text-sm mt-2">Analytics</div>
+          </button>
         </div>
       </div>
       <div class="geo-section" style="padding-top:0;">
@@ -1093,6 +1096,49 @@
     }
   }
 
+  async function showAnalytics() {
+    const html = `
+      <div class="sheet__header"><div class="h4">Analytics</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4 text-xs text-muted mb-3">How your listings are performing — views, enquiries, and conversion.</div>
+      <div class="px-4" id="analytics-body" style="min-height:200px;"><div class="page-loading"><div class="spinner"></div></div></div>
+    `;
+    openSheet(html);
+    try {
+      const d = await API.ownerAnalytics();
+      const list = d.properties || [];
+      const totals = d.totals || { total_views: 0, total_enquiries: 0, total_properties: 0 };
+      const body = document.getElementById('analytics-body');
+      const overallRate = totals.total_views > 0 ? Math.round((totals.total_enquiries / totals.total_views) * 100) : 0;
+      const summaryHtml = `
+        <div class="grid-3 mb-4">
+          <div class="geo-card text-center"><div class="h4">${totals.total_views.toLocaleString()}</div><div class="text-xs text-muted">Views</div></div>
+          <div class="geo-card text-center"><div class="h4">${totals.total_enquiries.toLocaleString()}</div><div class="text-xs text-muted">Enquiries</div></div>
+          <div class="geo-card text-center"><div class="h4">${overallRate}%</div><div class="text-xs text-muted">Enquiry Rate</div></div>
+        </div>
+      `;
+      if (!list.length) {
+        body.innerHTML = summaryHtml + `<div class="empty-state"><div class="empty-state__icon">📈</div><div class="empty-state__title">No properties yet</div><div class="empty-state__sub">Once you list a property, its views and enquiries will show here.</div></div>`;
+        return;
+      }
+      body.innerHTML = summaryHtml + `<div class="prop-list">` + list.map(p => `
+        <div class="geo-card">
+          <div class="flex justify-between items-start">
+            <div class="font-bold">${esc(p.title || '—')}</div>
+            <span class="pill ${p.status==='live'?'pill--green':'pill--gray'}">${esc(p.status||'—')}</span>
+          </div>
+          <div class="flex justify-between text-xs text-muted mt-2">
+            <span>👁️ ${(p.view_count||0).toLocaleString()} views</span>
+            <span>📬 ${(p.enquiry_count||0).toLocaleString()} enquiries</span>
+            <span>${p.enquiry_rate||0}% rate</span>
+          </div>
+          <div class="text-xs text-muted mt-1">${p.days_live||0} day${p.days_live===1?'':'s'} live</div>
+        </div>
+      `).join('') + `</div>`;
+    } catch (e) {
+      document.getElementById('analytics-body').innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;
+    }
+  }
+
   // ── Bulk unit import (CSV) ──────────────────────────────────────────────
   // Same lightweight, dependency-free parser as the website — handles
   // quoted fields with embedded commas/newlines and "" as an escaped quote.
@@ -1202,6 +1248,6 @@
     };
   }
 
-  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, showTenancyTracker, loadOwnerProperties, openBulkImportSheet };
+  window.GeoOwner = { openAddProperty, openUnits, showEnquiries, showTenancyTracker, showAnalytics, loadOwnerProperties, openBulkImportSheet };
   window.GeoRouter.register('owner', render);
 })(window);

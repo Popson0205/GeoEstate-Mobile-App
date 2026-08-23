@@ -55,6 +55,7 @@
       main.innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">Property not found</div><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;
       return;
     }
+    API.recordPropertyView(id);
     const images = (p.images && p.images.length ? p.images : (p.img ? [p.img] : []));
     const amenities = p.amenities || [];
 

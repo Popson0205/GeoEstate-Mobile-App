@@ -127,6 +127,18 @@
       const d = await req('/properties/' + encodeURIComponent(id));
       return mapProperty(d.property);
     },
+    // Fire-and-forget, deduped to once per property per app session
+    // (sessionStorage — a returning visit tomorrow should count as a new
+    // view, so this deliberately doesn't persist across app restarts).
+    recordPropertyView(id) {
+      if (!id) return;
+      const key = 'geo_viewed_' + id;
+      try {
+        if (sessionStorage.getItem(key)) return;
+        sessionStorage.setItem(key, '1');
+      } catch (e) {}
+      fetch(BASE + '/properties/' + encodeURIComponent(id) + '/view', { method: 'POST' }).catch(() => {});
+    },
     async submitEnquiry(payload) { return req('/enquiry', { method: 'POST', body: payload }); },
     async submitPayment(payload) { return req('/submit-payment', { method: 'POST', body: payload }); },
     async getAvailability(propertyId) {
@@ -182,6 +194,7 @@
     async ownerVerifyIdentity(payload) { return ownerReq('/owner/verify-identity', { method: 'POST', body: payload }); },
     async ownerEnquiries() { const d = await ownerReq('/owner/enquiries'); return d.enquiries || []; },
     async ownerTenancies() { const d = await ownerReq('/owner/tenancies'); return d.tenancies || []; },
+    async ownerAnalytics() { return ownerReq('/owner/analytics'); },
 
     // ---- In-app chat & push token ----
     // Uses the same owner-session bearer token any logged-in user (owner or
