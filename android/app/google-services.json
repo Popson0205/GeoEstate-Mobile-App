@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "975948798359",
+    "project_id": "geoestate-nig-ltd",
+    "storage_bucket": "geoestate-nig-ltd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:975948798359:android:3b67cac30c10c04c0bccd2",
+        "android_client_info": {
+          "package_name": "ng.com.geoestate.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsx7LJ7X4Ts7poC-_gueEXJyt1HFy9j9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

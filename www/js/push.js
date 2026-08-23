@@ -5,27 +5,25 @@
 // plugin, verified against its actual registerPlugin() call — unlike the
 // biometric plugin, the JS export name and the bridge name match exactly).
 //
-// FCM_CONFIGURED must be flipped to true only once BOTH of these are done:
-//   1. android/app/google-services.json (real Firebase project credentials)
-//      is added to this repo and the Google Services Gradle plugin is
-//      applied — without this, PushNotificationsPlugin.register() calls
-//      FirebaseMessaging.getInstance() directly, which throws a native
-//      IllegalStateException ("Default FirebaseApp is not initialized")
-//      because FirebaseApp was never initialized. That's not something a
-//      JS try/catch can catch — it crashes the whole app process (this is
-//      exactly what happened: "GeoEstate keeps stopping" right after
-//      granting notification permission, since permission-grant is what
-//      triggered the next step, register()).
-//   2. SECRET_FCM_SERVICE_ACCOUNT is set on the backend (Railway), so a
-//      registered token actually has somewhere real to receive a push.
-// Until both are true, this module intentionally does nothing at all —
-// not even requesting notification permission, since there'd be no point
-// prompting for a permission the app can't yet use.
+// FCM_CONFIGURED is true now that android/app/google-services.json (real
+// Firebase project credentials) has been added and the app-level
+// build.gradle's conditional google-services block picks it up
+// automatically. Before this, PushNotificationsPlugin.register() called
+// FirebaseMessaging.getInstance() directly, which threw a native
+// IllegalStateException ("Default FirebaseApp is not initialized") since
+// FirebaseApp was never initialized — a native crash, not a JS error, so
+// no JS-level try/catch could ever have caught it ("GeoEstate keeps
+// stopping" right after granting notification permission, since
+// permission-grant is what triggered the next step, register()).
+// Push notifications also need SECRET_FCM_SERVICE_ACCOUNT set on the
+// backend (Railway) — without it, registration here still works safely,
+// but the backend has no way to actually send anything to a registered
+// device yet.
 // ============================================================
 (function (window) {
   'use strict';
 
-  const FCM_CONFIGURED = false;
+  const FCM_CONFIGURED = true;
 
   function getPlugin() {
     return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) || null;
