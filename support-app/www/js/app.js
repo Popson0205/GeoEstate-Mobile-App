@@ -12,6 +12,7 @@
 
   let pollTimer = null;
   let pendingEmail = '';
+  let currentView = 'login'; // 'login' | 'otp' | 'list' | 'thread' — drives the back-button handler below
 
   function esc(str) {
     if (str === null || str === undefined) return '';
@@ -43,6 +44,7 @@
 
   // ---- Login ----
   function renderLogin() {
+    currentView = 'login';
     stopPolling();
     app.innerHTML = `
       <div class="login-screen">
@@ -73,6 +75,7 @@
   }
 
   function renderOtpStep() {
+    currentView = 'otp';
     app.innerHTML = `
       <div class="login-screen">
         <div class="login-logo">📩</div>
@@ -105,6 +108,7 @@
 
   // ---- Conversations list ----
   async function renderConversations() {
+    currentView = 'list';
     stopPolling();
     app.innerHTML = `
       <div class="header">
@@ -146,6 +150,7 @@
   let currentThread = null;
 
   function openThread(otherId, otherName, propertyId, propertyTitle) {
+    currentView = 'thread';
     stopPolling();
     currentThread = { otherId, propertyId };
     app.innerHTML = `
@@ -209,7 +214,31 @@
 
   window.SupportApp = { openThread, send, toast };
 
+  // ---- Back button / edge-swipe gesture ----
+  // This is a single-page app with no browser history entries (screens are
+  // swapped via direct innerHTML replacement, not pushState), so Android's
+  // default back handling has nothing to go back to and just falls through
+  // to backgrounding the app — which is why the hardware back button and
+  // the edge-swipe gesture (Capacitor's backButton listener fires for both,
+  // they're unified at the OS level) appeared to "do nothing" from a chat
+  // thread. Wires it to currentView instead: back from a thread returns to
+  // the conversations list; back from the list (or login) exits the app.
+  function wireBackButton() {
+    const CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (!CapApp) return; // web preview, or native module not linked yet
+    CapApp.addListener('backButton', () => {
+      if (currentView === 'thread') {
+        renderConversations();
+      } else if (currentView === 'otp') {
+        renderLogin();
+      } else {
+        CapApp.exitApp();
+      }
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    wireBackButton();
     if (API.isLoggedIn()) {
       renderConversations();
       if (window.SupportPush) window.SupportPush.init();

@@ -82,6 +82,7 @@ html, body {
   align-items: center;
   gap: 10px;
   padding: 16px 18px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
   border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
 }
