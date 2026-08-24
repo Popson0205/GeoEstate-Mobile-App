@@ -1,10 +1,12 @@
 // ============================================================
 // GeoEstate Support — API wrapper
-// Reuses the exact same owner-login OTP flow and chat endpoints as the
-// main customer app (requireOwner() on the backend validates a token from
-// any registered user regardless of role) — this app just has nothing
-// else in it besides that one flow, since the shared support account is
-// the only identity anyone ever logs in as here.
+// Login uses individually-enrolled authenticator app (TOTP) credentials —
+// each of the (however many) staff members has their own email + code
+// from their own Google Authenticator/Authy/etc, enrolled via the admin
+// panel — rather than a single shared email waiting on an emailed OTP.
+// A successful login still just issues a token for the one shared
+// SUPPORT_USER_ID identity, so every chat endpoint below is completely
+// unaffected by who specifically logged in.
 // ============================================================
 (function (window) {
   'use strict';
@@ -46,12 +48,11 @@
     getSession, setSession, clearSession,
     isLoggedIn: () => !!getSession(),
 
-    async requestOTP(email) {
-      return req('/owner/login', { method: 'POST', body: { email } });
-    },
-    async verifyOTP(email, code) {
-      const d = await req('/owner/login', { method: 'POST', body: { email, code } });
-      if (d.success && d.token) setSession({ token: d.token, owner: d.owner, loginTime: Date.now() });
+    // One step: email + the 6-digit code currently showing in their
+    // authenticator app — no waiting on an email round-trip.
+    async login(email, code) {
+      const d = await req('/support/login', { method: 'POST', body: { email, code } });
+      if (d.success && d.token) setSession({ token: d.token, owner: d.owner, staffName: d.staff_name, loginTime: Date.now() });
       return d;
     },
     logout() { clearSession(); },

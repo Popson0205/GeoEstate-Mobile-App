@@ -11,8 +11,7 @@
   const app = document.getElementById('app');
 
   let pollTimer = null;
-  let pendingEmail = '';
-  let currentView = 'login'; // 'login' | 'otp' | 'list' | 'thread' — drives the back-button handler below
+  let currentView = 'login'; // 'login' | 'list' | 'thread' — drives the back-button handler below
 
   function esc(str) {
     if (str === null || str === undefined) return '';
@@ -83,6 +82,10 @@
   function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
 
   // ---- Login ----
+  // Single screen: email + the 6-digit code currently showing in the
+  // person's own authenticator app — no waiting on an emailed code, and no
+  // separate "enter code" step, since the code is already sitting on their
+  // phone before they even open this app.
   function renderLogin() {
     currentView = 'login';
     stopPolling();
@@ -90,60 +93,40 @@
       <div class="login-screen">
         <div class="login-logo">🏠</div>
         <div class="login-title">GeoEstate Support</div>
-        <div class="login-sub">Sign in with the shared support email to answer customer chats.</div>
+        <div class="login-sub">Sign in with your own email and the code from your authenticator app.</div>
         <div class="field">
           <label>Email</label>
-          <input class="input" id="login-email" type="email" placeholder="geoestate.ng@gmail.com" autocomplete="username">
+          <input class="input" id="login-email" type="email" placeholder="your.email@example.com" autocomplete="username">
         </div>
-        <button class="btn btn-primary btn-block" id="send-code-btn">Send Code</button>
-      </div>
-    `;
-    document.getElementById('send-code-btn').onclick = async (e) => {
-      const email = document.getElementById('login-email').value.trim();
-      if (!email) { toast('Enter the support email', 'error'); return; }
-      e.target.disabled = true; e.target.textContent = 'Sending…';
-      try {
-        await API.requestOTP(email);
-        pendingEmail = email;
-        toast('Code sent — check that inbox', 'success');
-        renderOtpStep();
-      } catch (err) {
-        toast(err.message || 'Could not send code', 'error');
-        e.target.disabled = false; e.target.textContent = 'Send Code';
-      }
-    };
-  }
-
-  function renderOtpStep() {
-    currentView = 'otp';
-    app.innerHTML = `
-      <div class="login-screen">
-        <div class="login-logo">📩</div>
-        <div class="login-title">Enter the code</div>
-        <div class="login-sub">Sent to ${esc(pendingEmail)}</div>
         <div class="field">
-          <label>6-digit code</label>
-          <input class="input" id="login-otp" type="tel" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code">
+          <label>Authenticator code</label>
+          <input class="input" id="login-code" type="tel" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code">
         </div>
-        <button class="btn btn-primary btn-block" id="verify-btn">Verify & Sign In</button>
-        <button class="btn btn-outline btn-block mt-2" id="back-btn">Use a different email</button>
+        <button class="btn btn-primary btn-block" id="signin-btn">Sign In</button>
+        <div class="login-hint">Not enrolled yet? Ask an admin to add you in the Support Staff panel.</div>
       </div>
     `;
-    document.getElementById('back-btn').onclick = renderLogin;
-    document.getElementById('verify-btn').onclick = async (e) => {
-      const code = document.getElementById('login-otp').value.trim();
-      if (code.length !== 6) { toast('Enter the 6-digit code', 'error'); return; }
-      e.target.disabled = true; e.target.textContent = 'Verifying…';
+    const email = document.getElementById('login-email');
+    const code = document.getElementById('login-code');
+    const submit = async (e) => {
+      const emailVal = email.value.trim();
+      const codeVal = code.value.trim();
+      if (!emailVal) { toast('Enter your email', 'error'); return; }
+      if (codeVal.length !== 6) { toast('Enter the 6-digit code', 'error'); return; }
+      const btn = document.getElementById('signin-btn');
+      btn.disabled = true; btn.textContent = 'Signing in…';
       try {
-        await API.verifyOTP(pendingEmail, code);
+        await API.login(emailVal, codeVal);
         toast('Signed in', 'success');
         if (window.SupportPush) window.SupportPush.init();
         renderConversations();
       } catch (err) {
-        toast(err.message || 'Invalid code', 'error');
-        e.target.disabled = false; e.target.textContent = 'Verify & Sign In';
+        toast(err.message || 'Could not sign in', 'error');
+        btn.disabled = false; btn.textContent = 'Sign In';
       }
     };
+    document.getElementById('signin-btn').onclick = submit;
+    code.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
   }
 
   // ---- Conversations list ----
@@ -305,8 +288,6 @@
     CapApp.addListener('backButton', () => {
       if (currentView === 'thread') {
         renderConversations();
-      } else if (currentView === 'otp') {
-        renderLogin();
       } else {
         CapApp.exitApp();
       }
