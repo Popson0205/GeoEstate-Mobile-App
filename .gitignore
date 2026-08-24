@@ -7,3 +7,13 @@ android/app/release/
 *.keystore
 android/app/keystore.properties
 .DS_Store
+
+# support-app is a separate, nested Capacitor project — its own build
+# artifacts need their own entries since the patterns above are relative
+# to the repo root, not recursive into subdirectories.
+support-app/android/app/build/
+support-app/android/build/
+support-app/android/.gradle/
+support-app/android/local.properties
+support-app/android/app/release/
+support-app/android/app/keystore.properties

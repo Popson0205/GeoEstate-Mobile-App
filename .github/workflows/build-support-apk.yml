@@ -1,9 +1,9 @@
-name: Build Debug APK
+name: Build Support App APK
 
 on:
   push:
     branches: [ main ]
-    paths-ignore:
+    paths:
       - 'support-app/**'
       - '.github/workflows/build-support-apk.yml'
   workflow_dispatch: {}
@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: support-app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,12 +39,12 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Build debug APK
-        working-directory: android
+        working-directory: support-app/android
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GeoEstate-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: GeoEstate-Support-debug-apk
+          path: support-app/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
