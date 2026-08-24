@@ -207,7 +207,7 @@
     input.focus();
   }
 
-  window.SupportApp = { openThread, send };
+  window.SupportApp = { openThread, send, toast };
 
   document.addEventListener('DOMContentLoaded', () => {
     if (API.isLoggedIn()) {
