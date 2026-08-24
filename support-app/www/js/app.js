@@ -19,16 +19,56 @@
     return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
 
-  function timeAgo(dateStr) {
-    const diffMs = Date.now() - new Date(dateStr).getTime();
+  // Consistent, distinguishable avatar color per person (hashed from their
+  // id, not random) — makes the conversations list scannable at a glance
+  // instead of every row looking identical.
+  const AVATAR_PALETTE = [
+    ['#3db374', '#145430'], ['#4a9dd6', '#1c4a6e'], ['#c77dd6', '#5a2a66'],
+    ['#e0a23d', '#7a4e10'], ['#e0616b', '#6e1f28'], ['#5ecbc0', '#1c5a53']
+  ];
+  function avatarGradient(id) {
+    let hash = 0;
+    const s = String(id || '');
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    const [c1, c2] = AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+    return `linear-gradient(135deg, ${c1}, ${c2})`;
+  }
+
+  // Short relative time for the conversations list (WhatsApp-style: "2m",
+  // "1h", "Yesterday", or a short date once it's old enough that the exact
+  // time isn't the useful part anymore).
+  function timeAgoShort(dateStr) {
+    const d = new Date(dateStr);
+    const diffMs = Date.now() - d.getTime();
     const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return mins + 'm ago';
+    if (mins < 1) return 'now';
+    if (mins < 60) return mins + 'm';
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return hrs + 'h ago';
+    if (hrs < 24 && d.getDate() === new Date().getDate()) return hrs + 'h';
     const days = Math.floor(hrs / 24);
-    if (days < 7) return days + 'd ago';
-    return new Date(dateStr).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+    if (days === 1 || (days === 0 && d.getDate() !== new Date().getDate())) return 'Yesterday';
+    if (days < 7) return d.toLocaleDateString('en-NG', { weekday: 'short' });
+    return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+  }
+
+  // Full date label used for the sticky date separators inside a thread.
+  function dateSeparatorLabel(dateStr) {
+    const d = new Date(dateStr);
+    const today = new Date();
+    const yest = new Date(); yest.setDate(today.getDate() - 1);
+    const sameDay = (a, b) => a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+    if (sameDay(d, today)) return 'Today';
+    if (sameDay(d, yest)) return 'Yesterday';
+    return d.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined });
+  }
+
+  // Sent (single check) / delivered (double check) / read (double check,
+  // accent color) — see handleGetThread on the backend for how each status
+  // is genuinely determined, not simulated.
+  function statusTicks(status) {
+    if (status === 'read') return '<svg class="ticks ticks--read" viewBox="0 0 20 12" fill="none"><path d="M1 6.5L4.5 10L11 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6.5L11.5 10L18 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if (status === 'delivered') return '<svg class="ticks ticks--delivered" viewBox="0 0 20 12" fill="none"><path d="M1 6.5L4.5 10L11 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6.5L11.5 10L18 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return '<svg class="ticks ticks--sent" viewBox="0 0 20 12" fill="none"><path d="M1 6.5L4.5 10L11 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
 
   function toast(msg, type) {
@@ -133,12 +173,18 @@
       const conversations = await API.getConversations();
       list.innerHTML = conversations.length ? conversations.map(c => `
         <div class="conv-row" onclick="SupportApp.openThread('${c.other_id}','${esc(c.other_name||'Customer').replace(/'/g,"\\'")}','${c.property_id||''}','${esc(c.property_title||'').replace(/'/g,"\\'")}')">
-          <div class="conv-avatar">${esc((c.other_name||'C')[0].toUpperCase())}</div>
+          <div class="conv-avatar" style="background:${avatarGradient(c.other_id)}">${esc((c.other_name||'C')[0].toUpperCase())}</div>
           <div class="conv-body">
-            <div class="conv-name">${esc(c.other_name || 'Customer')}${c.property_title ? ' · ' + esc(c.property_title) : ''}</div>
-            <div class="conv-preview">${esc(c.last_message || '')}</div>
+            <div class="conv-top-row">
+              <div class="conv-name">${esc(c.other_name || 'Customer')}</div>
+              <div class="conv-time">${c.last_at ? timeAgoShort(c.last_at) : ''}</div>
+            </div>
+            ${c.property_title ? `<div class="conv-property">${esc(c.property_title)}</div>` : ''}
+            <div class="conv-preview-row">
+              <div class="conv-preview">${esc(c.last_message || '')}</div>
+              ${c.unread ? '<div class="conv-badge">1</div>' : ''}
+            </div>
           </div>
-          ${c.unread ? '<div class="conv-dot"></div>' : ''}
         </div>
       `).join('') : `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">No conversations yet</div><div class="empty-sub">New customer chats will show up here.</div></div>`;
     } catch (e) {
@@ -156,6 +202,7 @@
     app.innerHTML = `
       <div class="header">
         <button class="icon-btn" id="back-to-list">←</button>
+        <div class="header-avatar" style="background:${avatarGradient(otherId)}">${esc((otherName||'C')[0].toUpperCase())}</div>
         <div class="header-title-block">
           <div class="header-title">${esc(otherName)}</div>
           ${propertyTitle ? `<div class="header-sub">${esc(propertyTitle)}</div>` : ''}
@@ -164,7 +211,9 @@
       <div id="thread-messages" class="thread-messages"></div>
       <div class="thread-input-row">
         <input class="input" id="thread-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')SupportApp.send()">
-        <button class="btn btn-primary" id="send-btn" onclick="SupportApp.send()">Send</button>
+        <button class="send-fab" id="send-btn" onclick="SupportApp.send()" aria-label="Send">
+          <svg viewBox="0 0 24 24" fill="none" width="19" height="19"><path d="M4 12L20 4L14 20L11 13L4 12Z" fill="currentColor"/></svg>
+        </button>
       </div>
     `;
     document.getElementById('back-to-list').onclick = renderConversations;
@@ -181,15 +230,42 @@
       const session = API.getSession();
       const myId = session ? session.owner.id : null;
       const wasNearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
-      box.innerHTML = messages.length ? messages.map(m => {
+
+      if (!messages.length) {
+        box.innerHTML = `<div class="empty-state"><div class="empty-icon">👋</div><div class="empty-sub">No messages yet</div></div>`;
+        return;
+      }
+
+      // Group consecutive messages from the same sender within 3 minutes of
+      // each other (tighter spacing, connected corner treatment — reads as
+      // one "turn" instead of a wall of separately-boxed bubbles), and drop
+      // in a sticky date separator whenever the calendar day changes.
+      let html = '';
+      let lastDay = null;
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i];
+        const prev = messages[i - 1];
+        const next = messages[i + 1];
         const mine = m.sender_id === myId;
-        return `
-          <div class="bubble-row ${mine ? 'mine' : ''}">
+        const day = new Date(m.created_at).toDateString();
+        if (day !== lastDay) {
+          html += `<div class="date-sep"><span>${dateSeparatorLabel(m.created_at)}</span></div>`;
+          lastDay = day;
+        }
+        const groupedWithPrev = prev && prev.sender_id === m.sender_id && new Date(m.created_at) - new Date(prev.created_at) < 180000 && new Date(prev.created_at).toDateString() === day;
+        const groupedWithNext = next && next.sender_id === m.sender_id && new Date(next.created_at) - new Date(m.created_at) < 180000 && new Date(next.created_at).toDateString() === day;
+        const posClass = groupedWithPrev && groupedWithNext ? 'mid' : groupedWithPrev ? 'last' : groupedWithNext ? 'first' : 'solo';
+        html += `
+          <div class="bubble-row ${mine ? 'mine' : ''} grp-${posClass}">
             <div class="bubble ${mine ? 'bubble--mine' : 'bubble--theirs'}">${esc(m.body || '')}</div>
-            <div class="bubble-time">${new Date(m.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
+            ${!groupedWithNext ? `<div class="bubble-meta">
+              <span class="bubble-time">${new Date(m.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</span>
+              ${mine ? statusTicks(m.status) : ''}
+            </div>` : ''}
           </div>
         `;
-      }).join('') : `<div class="empty-state"><div class="empty-icon">👋</div><div class="empty-sub">No messages yet</div></div>`;
+      }
+      box.innerHTML = html;
       if (wasNearBottom) box.scrollTop = box.scrollHeight;
     } catch (e) { /* keep showing whatever loaded last */ }
   }
