@@ -15,6 +15,56 @@
 
   let pollTimer = null;
 
+  // Consistent, distinguishable avatar color per person (hashed from their
+  // id, not random) — mirrors the standalone Support app's redesign so the
+  // two feel like the same product.
+  const AVATAR_PALETTE = [
+    ['#3db374', '#145430'], ['#4a9dd6', '#1c4a6e'], ['#c77dd6', '#5a2a66'],
+    ['#e0a23d', '#7a4e10'], ['#e0616b', '#6e1f28'], ['#5ecbc0', '#1c5a53']
+  ];
+  function avatarGradient(id) {
+    let hash = 0;
+    const s = String(id || '');
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    const [c1, c2] = AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+    return `linear-gradient(135deg, ${c1}, ${c2})`;
+  }
+
+  function timeAgoShort(dateStr) {
+    const d = new Date(dateStr);
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'now';
+    if (mins < 60) return mins + 'm';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24 && d.getDate() === new Date().getDate()) return hrs + 'h';
+    const days = Math.floor(hrs / 24);
+    if (days === 1 || (days === 0 && d.getDate() !== new Date().getDate())) return 'Yesterday';
+    if (days < 7) return d.toLocaleDateString('en-NG', { weekday: 'short' });
+    return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+  }
+
+  function dateSeparatorLabel(dateStr) {
+    const d = new Date(dateStr);
+    const today = new Date();
+    const yest = new Date(); yest.setDate(today.getDate() - 1);
+    const sameDay = (a, b) => a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+    if (sameDay(d, today)) return 'Today';
+    if (sameDay(d, yest)) return 'Yesterday';
+    return d.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined });
+  }
+
+  // Sent (single check) / delivered (double check, gray) / read (double
+  // check, blue) — see handleGetThread on the backend for how each status
+  // is genuinely determined, not simulated.
+  function statusTicks(status) {
+    const color = status === 'read' ? '#53bdeb' : 'var(--text-muted)';
+    const paths = status === 'sent'
+      ? '<path d="M1 6.5L4.5 10L11 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+      : '<path d="M1 6.5L4.5 10L11 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6.5L11.5 10L18 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>';
+    return `<svg viewBox="0 0 20 12" fill="none" style="width:15px;height:9px;flex-shrink:0;color:${color}">${paths}</svg>`;
+  }
+
   function openConversationsList() {
     const user = API.getUser() || (API.getOwnerSession() || {}).owner;
     if (!user) {
@@ -39,12 +89,19 @@
         return;
       }
       body.innerHTML = conversations.map(c => `
-        <div class="geo-card flex justify-between items-center mb-2" style="cursor:pointer" onclick='GeoChat.openChatThread(${JSON.stringify(c.other_id)}, ${JSON.stringify(c.other_name||"User")}, ${JSON.stringify(c.property_id||"")}, ${JSON.stringify(c.property_title||"")})'>
-          <div style="min-width:0">
-            <div class="font-bold text-sm">${esc(c.other_name || 'User')}${c.property_title ? ' · ' + esc(c.property_title) : ''}</div>
-            <div class="text-xs text-muted mt-1" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.last_message || '')}</div>
+        <div class="geo-card flex items-start mb-2" style="cursor:pointer;gap:12px" onclick='GeoChat.openChatThread(${JSON.stringify(c.other_id)}, ${JSON.stringify(c.other_name||"User")}, ${JSON.stringify(c.property_id||"")}, ${JSON.stringify(c.property_title||"")})'>
+          <div style="width:44px;height:44px;border-radius:50%;background:${avatarGradient(c.other_id)};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#06170d;flex-shrink:0">${esc((c.other_name||'U')[0].toUpperCase())}</div>
+          <div style="min-width:0;flex:1">
+            <div class="flex justify-between items-baseline" style="gap:8px">
+              <div class="font-bold text-sm" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.other_name || 'User')}</div>
+              <div class="text-xs text-muted" style="flex-shrink:0">${c.last_at ? timeAgoShort(c.last_at) : ''}</div>
+            </div>
+            ${c.property_title ? `<div class="text-xs" style="color:var(--g-400);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.property_title)}</div>` : ''}
+            <div class="flex justify-between items-center" style="gap:8px;margin-top:3px">
+              <div class="text-xs text-muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(c.last_message || '')}</div>
+              ${c.unread ? '<div style="min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--g-400);color:#06170d;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>' : ''}
+            </div>
           </div>
-          ${c.unread ? '<div style="width:9px;height:9px;border-radius:50%;background:var(--g-400);flex-shrink:0;margin-left:10px"></div>' : ''}
         </div>
       `).join('');
     } catch (e) {
@@ -62,16 +119,21 @@
     if (otherId === user.id) { toast("You can't message yourself", 'error'); return; }
     openSheet(`
       <div class="sheet__header">
-        <div>
-          <div class="h4">${esc(otherName || 'User')}</div>
-          ${propertyTitle ? `<div class="text-xs text-muted">${esc(propertyTitle)}</div>` : ''}
+        <div class="flex items-center" style="gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:${avatarGradient(otherId)};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#06170d;flex-shrink:0">${esc((otherName||'U')[0].toUpperCase())}</div>
+          <div>
+            <div class="h4">${esc(otherName || 'User')}</div>
+            ${propertyTitle ? `<div class="text-xs text-muted">${esc(propertyTitle)}</div>` : ''}
+          </div>
         </div>
         <button class="geo-icon-btn" onclick="GeoChat.closeThread()">✕</button>
       </div>
-      <div id="chat-messages" style="height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:0 4px 12px"></div>
-      <div class="flex gap-2 px-4" style="padding-bottom:calc(var(--sp-4) + var(--safe-bottom))">
-        <input class="input" id="chat-input" placeholder="Type a message…" style="flex:1" onkeydown="if(event.key==='Enter')GeoChat.send()">
-        <button class="btn btn-primary" onclick="GeoChat.send()" style="flex-shrink:0">Send</button>
+      <div id="chat-messages" style="height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:0 4px 12px"></div>
+      <div class="flex gap-2 px-4 items-center" style="padding-bottom:calc(var(--sp-4) + var(--safe-bottom))">
+        <input class="input" id="chat-input" placeholder="Type a message…" style="flex:1;border-radius:22px" onkeydown="if(event.key==='Enter')GeoChat.send()">
+        <button onclick="GeoChat.send()" style="width:42px;height:42px;border-radius:50%;border:none;background:var(--g-400);color:#06170d;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" aria-label="Send">
+          <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M4 12L20 4L14 20L11 13L4 12Z" fill="currentColor"/></svg>
+        </button>
       </div>
     `, { persistent: true });
     document.getElementById('active-sheet').dataset.otherId = otherId;
@@ -103,15 +165,53 @@
     const box = document.getElementById('chat-messages');
     if (!box) return;
     const wasNearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
-    box.innerHTML = messages.length ? messages.map(m => {
+
+    if (!messages.length) {
+      box.innerHTML = `<div class="empty-state"><div class="empty-state__icon">👋</div><div class="empty-state__sub">Say hello</div></div>`;
+      return;
+    }
+
+    // Group consecutive messages from the same sender within 3 minutes
+    // (tighter spacing, connected corner treatment) and drop in a date
+    // separator whenever the calendar day changes — mirrors the standalone
+    // Support app's chat redesign so both feel like the same product.
+    let html = '';
+    let lastDay = null;
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      const prev = messages[i - 1];
+      const next = messages[i + 1];
       const mine = m.sender_id === currentUserId;
-      return `
-        <div style="align-self:${mine ? 'flex-end' : 'flex-start'};max-width:78%">
-          <div style="background:${mine ? 'var(--g-400)' : 'rgba(255,255,255,0.06)'};color:${mine ? '#06170d' : 'inherit'};padding:9px 14px;border-radius:14px;font-size:.87rem;line-height:1.4;word-wrap:break-word">${esc(m.body || '')}</div>
-          <div class="text-xs text-muted mt-1" style="text-align:${mine ? 'right' : 'left'}">${new Date(m.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
+      const day = new Date(m.created_at).toDateString();
+      if (day !== lastDay) {
+        html += `<div class="flex justify-center" style="margin:14px 0 10px"><span class="text-xs text-muted" style="background:rgba(255,255,255,0.06);padding:5px 14px;border-radius:999px;font-weight:600">${dateSeparatorLabel(m.created_at)}</span></div>`;
+        lastDay = day;
+      }
+      const groupedWithPrev = prev && prev.sender_id === m.sender_id && new Date(m.created_at) - new Date(prev.created_at) < 180000 && new Date(prev.created_at).toDateString() === day;
+      const groupedWithNext = next && next.sender_id === m.sender_id && new Date(next.created_at) - new Date(m.created_at) < 180000 && new Date(next.created_at).toDateString() === day;
+      // Only the "connecting" side flattens (right side for mine, left side
+      // for theirs) — the other side always stays fully rounded.
+      let bubbleRadius;
+      if (mine) {
+        bubbleRadius = (groupedWithPrev && groupedWithNext) ? '16px 4px 4px 16px'
+          : groupedWithPrev ? '16px 4px 16px 16px'
+          : '16px 16px 4px 16px'; // first or solo
+      } else {
+        bubbleRadius = (groupedWithPrev && groupedWithNext) ? '4px 16px 16px 4px'
+          : groupedWithPrev ? '4px 16px 16px 16px'
+          : '16px 16px 16px 4px'; // first or solo
+      }
+      html += `
+        <div style="align-self:${mine ? 'flex-end' : 'flex-start'};max-width:78%;display:flex;flex-direction:column;align-items:${mine ? 'flex-end' : 'flex-start'};margin-top:2px">
+          <div style="background:${mine ? 'var(--g-400)' : 'rgba(255,255,255,0.06)'};color:${mine ? '#06170d' : 'inherit'};padding:9px 13px;border-radius:${bubbleRadius};font-size:.87rem;line-height:1.4;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,0.15)">${esc(m.body || '')}</div>
+          ${!groupedWithNext ? `<div class="flex items-center" style="gap:4px;margin-top:3px;padding:0 2px">
+            <span class="text-xs text-muted">${new Date(m.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</span>
+            ${mine ? statusTicks(m.status) : ''}
+          </div>` : ''}
         </div>
       `;
-    }).join('') : `<div class="empty-state"><div class="empty-state__icon">👋</div><div class="empty-state__sub">Say hello</div></div>`;
+    }
+    box.innerHTML = html;
     if (wasNearBottom) box.scrollTop = box.scrollHeight;
   }
 
