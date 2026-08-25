@@ -7,7 +7,7 @@
   const API = window.GeoAPI;
 
   // ---- Start Transaction / escrow transfer (mirrors website's payment modal) ----
-  const GEOESTATE_ACCOUNT = { name: 'GeoEstate NIG Limited', bank: 'Guaranty Trust Bank (GTB)', number: '0264374326' };
+  const GEOESTATE_ACCOUNT = { name: 'GEOESTATE NIG LIMITED', bank: 'Guaranty Trust Bank (GTB)', number: '3005285279' };
   function generateRef() { return 'GEO-' + Math.random().toString(36).substr(2, 4).toUpperCase() + '-' + new Date().getFullYear(); }
 
   // ---- Unit selection (mirrors website's selectUnit + unit-select-bar) ----
