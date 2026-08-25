@@ -56,6 +56,7 @@
         ${!isVerified ? renderRow('🪪','Verify Identity','Required to list properties',"GeoRouter.go('verify')") : ''}
         ${renderRow('❤️','Saved Properties','',"GeoProfile.showSaved()")}
         ${renderRow('💬','Messages','Chat with owners about listings',"GeoChat.openConversationsList()")}
+        ${renderRow('🏠','My Tenancy','View or sign your tenancy agreement',"GeoProfile.showMyTenancy()")}
         ${renderRow('🕒','Recently Viewed','',"GeoProfile.showRecentlyViewed()")}
         ${renderRow('🔔','Saved Searches','Get matched automatically',"GeoProfile.showSavedSearches()")}
         ${renderRow('📁','Document Vault','Your ID, receipts & documents',"GeoProfile.showDocumentVault()")}
@@ -114,6 +115,55 @@
   async function unsaveAndRefresh(propertyId) {
     try { await API.removeFavorite(propertyId); toast('Removed from Saved'); showSaved(); }
     catch (e) { toast(e.message || 'Could not remove', 'error'); }
+  }
+
+  // Customer-facing counterpart to the Owner Dashboard's Tenancy Tracker —
+  // same status logic, scoped to what the customer is renting rather than
+  // what they own. Reuses GeoOwner.openAgreementSheet() as-is (already
+  // built for the owner side, in screen-owner.js) since the backend
+  // resolves 'owner' vs 'tenant' role automatically — nothing about that
+  // sheet is owner-specific despite living in that file's namespace.
+  async function showMyTenancy() {
+    if (!API.getUser() && !API.getOwnerSession()) { toast('Please log in to view your tenancy', 'error'); window.GeoApp.openAuth('login'); return; }
+    openSheet(`
+      <div class="sheet__header"><div class="h4">My Tenancy</div><button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button></div>
+      <div class="px-4 text-xs text-muted mb-3">Any active rent or lease created once a payment you've made is confirmed.</div>
+      <div class="px-4" id="my-tenancy-body" style="min-height:200px;"><div class="page-loading"><div class="spinner"></div></div></div>
+    `);
+    try {
+      const tenancies = await API.myTenancies();
+      const body = document.getElementById('my-tenancy-body');
+      if (!tenancies.length) {
+        body.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🏠</div><div class="empty-state__title">No active tenancy yet</div><div class="empty-state__sub">This fills in automatically once a rent or lease payment you've made is confirmed.</div></div>`;
+        return;
+      }
+      const daysUntil = (dateStr) => Math.ceil((new Date(dateStr) - new Date()) / (1000*60*60*24));
+      body.innerHTML = tenancies.map(t => {
+        const days = t.end ? daysUntil(t.end) : null;
+        let pillBg = 'rgba(61,179,116,0.15)', pillColor = 'var(--g-300)', pillText = 'Active';
+        if (t.status === 'expired' || (days !== null && days < 0)) { pillBg = 'rgba(229,72,77,0.15)'; pillColor = '#e5484d'; pillText = 'Expired'; }
+        else if (days !== null && days <= 14) { pillBg = 'rgba(245,158,11,0.15)'; pillColor = '#f59e0b'; pillText = 'Ending Soon'; }
+        else if (t.status === 'packing-out') { pillBg = 'rgba(245,158,11,0.15)'; pillColor = '#f59e0b'; pillText = 'Packing Out'; }
+        return `
+          <div class="geo-card mb-2">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-bold text-sm">${esc(t.property || '—')}</div>
+                <div class="text-xs text-muted mt-1" style="text-transform:capitalize">${esc(t.type || 'rent')} · Owner: ${esc(t.owner || '—')}</div>
+              </div>
+              <span class="text-xs font-bold" style="padding:3px 10px;border-radius:999px;background:${pillBg};color:${pillColor};white-space:nowrap">${pillText}</span>
+            </div>
+            <div class="text-xs text-muted mt-2">
+              ${t.start ? new Date(t.start).toLocaleDateString('en-NG') : '—'} → ${t.end ? new Date(t.end).toLocaleDateString('en-NG') : '—'}
+              ${days !== null ? ' · ' + (days >= 0 ? days + ' days left' : 'Overdue') : ''}
+            </div>
+            <button class="btn btn-outline btn-sm w-full mt-3" onclick="GeoOwner.openAgreementSheet(${t.id})">📝 View / Sign Agreement</button>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      document.getElementById('my-tenancy-body').innerHTML = `<div class="empty-state"><div class="empty-state__sub">${esc(e.message||'')}</div></div>`;
+    }
   }
 
   function showRecentlyViewed() {
@@ -385,7 +435,7 @@ Questions about these terms can be sent through the Contact Us page in this app.
     `);
   }
 
-  window.GeoProfile = { showSaved, unsaveAndRefresh, showRecentlyViewed, showSavedSearches, removeSearchAndRefresh, showDocumentVault, showAffordabilityCalculator, showCompare, showBiometricSettings, showPrivacyPolicy, showTermsOfService };
+  window.GeoProfile = { showSaved, unsaveAndRefresh, showRecentlyViewed, showSavedSearches, removeSearchAndRefresh, showDocumentVault, showAffordabilityCalculator, showCompare, showBiometricSettings, showPrivacyPolicy, showTermsOfService, showMyTenancy };
 
   window.GeoRouter.register('profile', render);
 })(window);

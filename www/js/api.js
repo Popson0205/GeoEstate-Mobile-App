@@ -194,6 +194,7 @@
     async ownerVerifyIdentity(payload) { return ownerReq('/owner/verify-identity', { method: 'POST', body: payload }); },
     async ownerEnquiries() { const d = await ownerReq('/owner/enquiries'); return d.enquiries || []; },
     async ownerTenancies() { const d = await ownerReq('/owner/tenancies'); return d.tenancies || []; },
+    async myTenancies() { const d = await ownerReq('/owner/my-tenancies'); return d.tenancies || []; },
     async ownerAnalytics() { return ownerReq('/owner/analytics'); },
     async getTenancyAgreement(tenancyId) { return ownerReq('/owner/tenancy/' + tenancyId + '/agreement'); },
     async signTenancyAgreement(tenancyId, signature) { return ownerReq('/owner/tenancy/' + tenancyId + '/agreement/sign', { method: 'POST', body: { signature } }); },
