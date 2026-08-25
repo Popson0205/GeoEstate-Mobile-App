@@ -1123,6 +1123,15 @@
         </div>
         ${mySigned
           ? `<div class="geo-card" style="background:rgba(61,179,116,0.1)"><div class="text-sm">✅ You signed this as <strong>${esc(mySigned)}</strong> on ${new Date(mySignedAt).toLocaleDateString('en-NG')}.</div></div>`
+          : role === 'owner'
+          ? `<div class="field"><label>Type your full legal name to sign</label><input class="input" id="agreement-sign-input" placeholder="e.g. John A. Doe"></div>
+             <div class="text-sm font-bold mt-3 mb-1">Payout account</div>
+             <div class="text-xs text-muted mb-3">This is where GeoEstate sends your funds after handover — supplied by you directly, since it becomes part of what you're signing.</div>
+             <div class="field"><label>Bank Name</label><input class="input" id="agreement-bank-name" placeholder="e.g. Guaranty Trust Bank"></div>
+             <div class="field"><label>Account Number</label><input class="input" id="agreement-account-number" placeholder="10-digit account number" inputmode="numeric"></div>
+             <div class="field"><label>Account Name</label><input class="input" id="agreement-account-name" placeholder="Name on the account"></div>
+             <div class="text-xs text-muted mb-3">By typing your name and tapping Sign, you're electronically signing this agreement.</div>
+             <button class="btn btn-primary btn-block" id="agreement-sign-btn">✍️ Sign Agreement</button>`
           : `<div class="field"><label>Type your full legal name to sign</label><input class="input" id="agreement-sign-input" placeholder="e.g. John A. Doe"></div>
              <div class="text-xs text-muted mb-3">By typing your name and tapping Sign, you're electronically signing this agreement.</div>
              <button class="btn btn-primary btn-block" id="agreement-sign-btn">✍️ Sign Agreement</button>`
@@ -1139,9 +1148,23 @@
     const input = document.getElementById('agreement-sign-input');
     const signature = input ? input.value.trim() : '';
     if (!signature) { toast('Please type your full name to sign', 'error'); return; }
+    // Bank fields only exist in the DOM when signing as the owner (see the
+    // conditional form above) — this branch is a no-op for a tenant signing.
+    let bankDetails = null;
+    const bankNameEl = document.getElementById('agreement-bank-name');
+    if (bankNameEl) {
+      const bank_name = bankNameEl.value.trim();
+      const account_number = document.getElementById('agreement-account-number').value.trim();
+      const account_name = document.getElementById('agreement-account-name').value.trim();
+      if (!bank_name || !account_number || !account_name) {
+        toast('Bank name, account number, and account name are all required to sign', 'error');
+        return;
+      }
+      bankDetails = { bank_name, account_number, account_name };
+    }
     setBtnLoading(btn, true);
     try {
-      await API.signTenancyAgreement(tenancyId, signature);
+      await API.signTenancyAgreement(tenancyId, signature, bankDetails);
       toast('Agreement signed ✓', 'success');
       await loadAgreement(tenancyId);
     } catch (err) {
