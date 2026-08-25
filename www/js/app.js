@@ -330,6 +330,16 @@
     if (dot) dot.classList.toggle('hidden', !cachedNotifications.some(n => !n.read_at));
   }
 
+  function renderNotifHeader() {
+    const header = document.querySelector('#active-sheet .sheet__header .flex');
+    if (!header) return;
+    const hasUnread = cachedNotifications.some(n => !n.read_at);
+    header.innerHTML = `
+      ${hasUnread ? `<button class="btn btn-outline btn-sm" onclick="GeoApp.markAllNotifsRead()">Mark all read</button>` : ''}
+      <button class="geo-icon-btn" onclick="GeoUtil.closeSheet()">✕</button>
+    `;
+  }
+
   function openNotifications() {
     if (!(API.getUser() || API.getOwnerSession())) {
       toast('Sign in to see your notifications', 'error');
@@ -375,9 +385,15 @@
   }
 
   async function markAllNotifsRead() {
-    try { await API.markNotificationsRead(); } catch (e) {}
-    await loadNotifications();
-    renderNotifList();
+    try {
+      await API.markNotificationsRead();
+      await loadNotifications();
+      renderNotifList();
+      renderNotifHeader();
+      toast('All caught up', 'success');
+    } catch (e) {
+      toast(e.message || 'Could not mark notifications as read — check your connection', 'error');
+    }
   }
 
   window.GeoApp = {
