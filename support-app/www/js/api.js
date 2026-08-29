@@ -52,13 +52,13 @@
     // authenticator app — no waiting on an email round-trip.
     async login(email, code) {
       const d = await req('/support/login', { method: 'POST', body: { email, code } });
-      if (d.success && d.token) setSession({ token: d.token, owner: d.owner, staffName: d.staff_name, loginTime: Date.now() });
+      if (d.success && d.token) setSession({ token: d.token, owner: d.owner, staffName: d.staff_name, staffId: d.staff_id, loginTime: Date.now() });
       return d;
     },
     logout() { clearSession(); },
 
     async getConversations() {
-      const d = await req('/owner/conversations');
+      const d = await req('/support/conversations');
       return d.conversations || [];
     },
     async getThread(otherId, propertyId) {
@@ -71,6 +71,51 @@
     },
     async registerPushToken(token) {
       return req('/owner/push-token', { method: 'POST', body: { push_token: token } });
+    },
+
+    // ---- Conversation claims ----
+    // A claim is deliberate (staff tap "Claim"), not automatic on first
+    // reply — see handleClaimConversation on the backend for why.
+    async claimConversation(customerId) {
+      return req('/support/claim', { method: 'POST', body: { customerId } });
+    },
+    async releaseConversation(customerId) {
+      return req('/support/release', { method: 'POST', body: { customerId } });
+    },
+    async pingPresence(customerId) {
+      // Best-effort, silent on failure — a missed presence ping just means
+      // this one heartbeat doesn't show up for other staff, nothing worth
+      // surfacing an error for.
+      return req('/support/presence/ping', { method: 'POST', body: { customerId } }).catch(() => {});
+    },
+
+    // ---- Live updates (claims + presence) ----
+    // One shared SSE connection for both event types — claim changes are
+    // rare but need to update the UI reliably; presence pings arrive every
+    // ~10s from every other staff member with a thread open, so this
+    // reconnects on drop rather than leaving the support app silently
+    // stale until the next manual refresh.
+    connectLiveUpdates(onClaimChanged, onPresence) {
+      const session = getSession();
+      if (!session) return () => {};
+      let es = null;
+      let closed = false;
+      function connect() {
+        if (closed) return;
+        es = new EventSource(BASE + '/events');
+        es.addEventListener('support_claim_changed', (e) => {
+          try { onClaimChanged(JSON.parse(e.data)); } catch (err) {}
+        });
+        es.addEventListener('support_presence', (e) => {
+          try { onPresence(JSON.parse(e.data)); } catch (err) {}
+        });
+        es.onerror = () => {
+          es.close();
+          if (!closed) setTimeout(connect, 4000);
+        };
+      }
+      connect();
+      return () => { closed = true; if (es) es.close(); };
     }
   };
 })(window);

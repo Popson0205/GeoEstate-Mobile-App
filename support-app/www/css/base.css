@@ -170,8 +170,14 @@ html, body {
 .bubble-row.grp-mid, .bubble-row.grp-last { margin-top: 2px; }
 
 .bubble { padding: 9px 13px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.15); }
-.bubble--theirs { background: var(--bg-card); color: var(--text-primary); }
+.bubble--customer { background: var(--bg-card); color: var(--text-primary); }
 .bubble--mine { background: var(--g-400); color: #06170d; font-weight: 500; }
+/* A colleague's message under the same shared support account — same side
+   of the thread as "mine" (that's genuinely where it belongs, it's still
+   "us" from the customer's point of view), but a different color plus a
+   name label so staff can tell at a glance who actually typed it. */
+.bubble--colleague { background: var(--blue-400); color: #05202e; font-weight: 500; }
+.bubble-staff-label { font-size: 11px; font-weight: 700; color: var(--blue-400); margin-bottom: 2px; padding: 0 3px; }
 
 .bubble-row.mine.grp-first .bubble, .bubble-row.mine.grp-mid .bubble { border-bottom-right-radius: 4px; }
 .bubble-row.mine.grp-mid .bubble, .bubble-row.mine.grp-last .bubble { border-top-right-radius: 4px; }
@@ -179,6 +185,34 @@ html, body {
 .bubble-row:not(.mine).grp-mid .bubble, .bubble-row:not(.mine).grp-last .bubble { border-top-left-radius: 4px; }
 .bubble-row.grp-solo.mine .bubble { border-bottom-right-radius: 4px; }
 .bubble-row.grp-solo:not(.mine) .bubble { border-bottom-left-radius: 4px; }
+
+/* ---- Conversation claims + live presence ---- */
+.claim-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 14px; font-size: 12.5px; background: var(--bg-card); border-bottom: 1px solid var(--border-soft);
+}
+.claim-banner:empty { display: none; }
+.claim-banner-text { color: var(--text-secondary); font-weight: 600; }
+.claim-banner-text--mine { color: var(--g-300); }
+.claim-banner-text--other { color: var(--blue-400); }
+.claim-btn {
+  background: var(--g-500); color: #06170d; border: none; border-radius: 8px;
+  padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.claim-btn--release { background: transparent; color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-soft); }
+.thread-presence {
+  font-size: 12px; color: var(--blue-400); padding: 6px 14px 0;
+}
+.thread-presence:empty { display: none; padding: 0; }
+
+.conv-status-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.conv-status-row:empty { display: none; }
+.claim-chip {
+  font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: rgba(83,189,235,0.14); color: var(--blue-400);
+}
+.claim-chip--mine { background: rgba(62,179,116,0.16); color: var(--g-300); }
+.presence-chip { font-size: 10.5px; font-weight: 600; color: var(--blue-400); }
 
 .bubble-meta { display: flex; align-items: center; gap: 4px; margin-top: 3px; padding: 0 2px; }
 .bubble-time { font-size: 11px; color: var(--text-muted); }

@@ -11,7 +11,25 @@
   const app = document.getElementById('app');
 
   let pollTimer = null;
+  let presencePingTimer = null;
   let currentView = 'login'; // 'login' | 'list' | 'thread' — drives the back-button handler below
+
+  // Live state fed by the SSE connection (see connectLiveUpdates in api.js),
+  // merged into whatever the REST polling last loaded rather than waiting
+  // for the next poll cycle to reflect a claim change or a presence ping.
+  let liveDisconnect = null;
+  let conversationsCache = [];           // last list response, patched live
+  const presenceByCustomer = {};         // customerId -> { staffId, staffName, ts }
+  const PRESENCE_TIMEOUT_MS = 20000;     // matches the ~10s ping interval with margin
+
+  function myStaffId() {
+    const s = API.getSession();
+    return s ? s.staffId : null;
+  }
+  function myStaffName() {
+    const s = API.getSession();
+    return s ? s.staffName : null;
+  }
 
   function esc(str) {
     if (str === null || str === undefined) return '';
@@ -81,6 +99,36 @@
 
   function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
 
+  // ---- Live updates (claims + presence, via SSE) ----
+  // Connected once per session (idempotent — safe to call again on resume),
+  // torn down on logout. Patches whatever's currently cached/rendered
+  // rather than forcing a full reload, so a claim or presence change from
+  // a colleague shows up within a second or two instead of waiting for the
+  // next 15s poll.
+  function startLiveUpdates() {
+    if (liveDisconnect) return; // already connected
+    liveDisconnect = API.connectLiveUpdates(
+      (evt) => { // support_claim_changed: { customerId, claimedBy: {staffId,staffName} | null }
+        const row = conversationsCache.find(c => c.other_id === evt.customerId);
+        if (row) row.claimedBy = evt.claimedBy;
+        if (currentView === 'list') renderConversationRows();
+        if (currentView === 'thread' && currentThread && currentThread.otherId === evt.customerId) renderClaimBanner(evt.claimedBy);
+      },
+      (evt) => { // support_presence: { customerId, staffId, staffName, ts }
+        if (evt.staffId === myStaffId()) return; // ignore our own pings
+        presenceByCustomer[evt.customerId] = { staffId: evt.staffId, staffName: evt.staffName, ts: evt.ts };
+        if (currentView === 'list') renderConversationRows();
+        if (currentView === 'thread' && currentThread && currentThread.otherId === evt.customerId) renderThreadPresence();
+      }
+    );
+  }
+  function stopLiveUpdates() {
+    if (liveDisconnect) { liveDisconnect(); liveDisconnect = null; }
+  }
+  function isPresenceRecent(entry) {
+    return entry && (Date.now() - entry.ts) < PRESENCE_TIMEOUT_MS;
+  }
+
   // ---- Login ----
   // Single screen: email + the 6-digit code currently showing in the
   // person's own authenticator app — no waiting on an emailed code, and no
@@ -119,6 +167,7 @@
         await API.login(emailVal, codeVal);
         toast('Signed in', 'success');
         if (window.SupportPush) window.SupportPush.init();
+        startLiveUpdates();
         renderConversations();
       } catch (err) {
         toast(err.message || 'Could not sign in', 'error');
@@ -143,6 +192,7 @@
     document.getElementById('logout-btn').onclick = () => {
       API.logout();
       stopPolling();
+      stopLiveUpdates();
       renderLogin();
     };
     await loadConversations();
@@ -153,8 +203,24 @@
     const list = document.getElementById('conv-list');
     if (!list) { stopPolling(); return; }
     try {
-      const conversations = await API.getConversations();
-      list.innerHTML = conversations.length ? conversations.map(c => `
+      conversationsCache = await API.getConversations();
+      renderConversationRows();
+    } catch (e) {
+      // keep showing whatever was last loaded rather than clearing on a transient failure
+    }
+  }
+
+  function renderConversationRows() {
+    const list = document.getElementById('conv-list');
+    if (!list) return;
+    const myId = myStaffId();
+    list.innerHTML = conversationsCache.length ? conversationsCache.map(c => {
+      const claim = c.claimedBy;
+      const claimedByMe = claim && claim.staffId === myId;
+      const viewing = presenceByCustomer[c.other_id];
+      const viewingNow = isPresenceRecent(viewing) ? viewing : null;
+      const attribution = c.last_message_staff_name ? `${esc(c.last_message_staff_name)}: ` : '';
+      return `
         <div class="conv-row" onclick="SupportApp.openThread('${c.other_id}','${esc(c.other_name||'Customer').replace(/'/g,"\\'")}','${c.property_id||''}','${esc(c.property_title||'').replace(/'/g,"\\'")}')">
           <div class="conv-avatar" style="background:${avatarGradient(c.other_id)}">${esc((c.other_name||'C')[0].toUpperCase())}</div>
           <div class="conv-body">
@@ -164,15 +230,17 @@
             </div>
             ${c.property_title ? `<div class="conv-property">${esc(c.property_title)}</div>` : ''}
             <div class="conv-preview-row">
-              <div class="conv-preview">${esc(c.last_message || '')}</div>
+              <div class="conv-preview">${attribution}${esc(c.last_message || '')}</div>
               ${c.unread ? '<div class="conv-badge">1</div>' : ''}
+            </div>
+            <div class="conv-status-row">
+              ${claim ? `<span class="claim-chip ${claimedByMe ? 'claim-chip--mine' : ''}">${claimedByMe ? 'You\u2019re handling this' : 'Claimed by ' + esc(claim.staffName)}</span>` : ''}
+              ${viewingNow ? `<span class="presence-chip">\u{1F440} ${esc(viewingNow.staffName)} viewing</span>` : ''}
             </div>
           </div>
         </div>
-      `).join('') : `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">No conversations yet</div><div class="empty-sub">New customer chats will show up here.</div></div>`;
-    } catch (e) {
-      // keep showing whatever was last loaded rather than clearing on a transient failure
-    }
+      `;
+    }).join('') : `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">No conversations yet</div><div class="empty-sub">New customer chats will show up here.</div></div>`;
   }
 
   // ---- Chat thread ----
@@ -181,7 +249,12 @@
   function openThread(otherId, otherName, propertyId, propertyTitle) {
     currentView = 'thread';
     stopPolling();
-    currentThread = { otherId, propertyId };
+    stopPresencePing();
+    // Claim status comes from whatever the list last loaded — good enough
+    // to paint the banner immediately; live updates (SSE) keep it correct
+    // from here even if a colleague claims or releases it while this is open.
+    const cached = conversationsCache.find(c => c.other_id === otherId);
+    currentThread = { otherId, propertyId, claimedBy: cached ? cached.claimedBy : null };
     app.innerHTML = `
       <div class="header">
         <button class="icon-btn" id="back-to-list">←</button>
@@ -191,6 +264,8 @@
           ${propertyTitle ? `<div class="header-sub">${esc(propertyTitle)}</div>` : ''}
         </div>
       </div>
+      <div id="claim-banner" class="claim-banner"></div>
+      <div id="thread-presence" class="thread-presence"></div>
       <div id="thread-messages" class="thread-messages"></div>
       <div class="thread-input-row">
         <input class="input" id="thread-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')SupportApp.send()">
@@ -199,9 +274,61 @@
         </button>
       </div>
     `;
-    document.getElementById('back-to-list').onclick = renderConversations;
+    document.getElementById('back-to-list').onclick = () => { stopPresencePing(); renderConversations(); };
+    renderClaimBanner(currentThread.claimedBy);
+    renderThreadPresence();
     loadThread();
     pollTimer = setInterval(loadThread, 8000);
+    startPresencePing(otherId);
+  }
+
+  // Deliberate claim/release — not automatic on first reply, so a staff
+  // member always sees a clear, honest "is anyone already on this?" signal
+  // before choosing to engage, rather than the system silently deciding
+  // for them.
+  function renderClaimBanner(claimedBy) {
+    const el = document.getElementById('claim-banner');
+    if (!el || !currentThread) return;
+    currentThread.claimedBy = claimedBy;
+    const myId = myStaffId();
+    if (!claimedBy) {
+      el.innerHTML = `<span class="claim-banner-text">Unclaimed</span><button class="claim-btn" id="claim-btn">Claim</button>`;
+      document.getElementById('claim-btn').onclick = doClaim;
+    } else if (claimedBy.staffId === myId) {
+      el.innerHTML = `<span class="claim-banner-text claim-banner-text--mine">You're handling this</span><button class="claim-btn claim-btn--release" id="release-btn">Release</button>`;
+      document.getElementById('release-btn').onclick = doRelease;
+    } else {
+      el.innerHTML = `<span class="claim-banner-text claim-banner-text--other">Claimed by ${esc(claimedBy.staffName)}</span><button class="claim-btn" id="claim-btn">Take over</button>`;
+      document.getElementById('claim-btn').onclick = doClaim;
+    }
+  }
+
+  async function doClaim() {
+    if (!currentThread) return;
+    try {
+      const r = await API.claimConversation(currentThread.otherId);
+      renderClaimBanner(r.claimedBy);
+    } catch (err) { toast(err.message || 'Could not claim conversation', 'error'); }
+  }
+  async function doRelease() {
+    if (!currentThread) return;
+    try {
+      await API.releaseConversation(currentThread.otherId);
+      renderClaimBanner(null);
+    } catch (err) { toast(err.message || 'Could not release conversation', 'error'); }
+  }
+
+  // ---- Presence (live "someone's viewing this too") ----
+  function startPresencePing(customerId) {
+    API.pingPresence(customerId);
+    presencePingTimer = setInterval(() => API.pingPresence(customerId), 10000);
+  }
+  function stopPresencePing() { clearInterval(presencePingTimer); presencePingTimer = null; }
+  function renderThreadPresence() {
+    const el = document.getElementById('thread-presence');
+    if (!el || !currentThread) return;
+    const viewing = presenceByCustomer[currentThread.otherId];
+    el.innerHTML = isPresenceRecent(viewing) ? `\u{1F440} ${esc(viewing.staffName)} is also viewing this conversation` : '';
   }
 
   async function loadThread() {
@@ -211,7 +338,8 @@
     try {
       const messages = await API.getThread(currentThread.otherId, currentThread.propertyId);
       const session = API.getSession();
-      const myId = session ? session.owner.id : null;
+      const myId = session ? session.owner.id : null;   // the shared SUPPORT_USER_ID when logged in as staff
+      const myStaff = myStaffId();
       const wasNearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
 
       if (!messages.length) {
@@ -219,31 +347,48 @@
         return;
       }
 
-      // Group consecutive messages from the same sender within 3 minutes of
-      // each other (tighter spacing, connected corner treatment — reads as
-      // one "turn" instead of a wall of separately-boxed bubbles), and drop
-      // in a sticky date separator whenever the calendar day changes.
+      // A message's real "identity" for grouping/alignment purposes: the
+      // shared support account sends every staff member's messages under
+      // the same sender_id, so sender_id alone can't tell two colleagues
+      // apart, or tell a colleague's message apart from the customer's.
+      // sender_staff_id (set server-side from the verified login token,
+      // see handleSendMessage) is what actually distinguishes them.
+      function identity(m) {
+        return m.sender_id === myId && m.sender_staff_id ? ('staff:' + m.sender_staff_id) : m.sender_id;
+      }
+      function kind(m) {
+        if (m.sender_id !== myId) return 'customer';
+        return m.sender_staff_id === myStaff ? 'mine' : 'colleague';
+      }
+
+      // Group consecutive messages from the same real sender within 3
+      // minutes of each other (tighter spacing, connected corner treatment
+      // — reads as one "turn" instead of a wall of separately-boxed
+      // bubbles), and drop in a sticky date separator whenever the
+      // calendar day changes.
       let html = '';
       let lastDay = null;
       for (let i = 0; i < messages.length; i++) {
         const m = messages[i];
         const prev = messages[i - 1];
         const next = messages[i + 1];
-        const mine = m.sender_id === myId;
+        const k = kind(m);
         const day = new Date(m.created_at).toDateString();
         if (day !== lastDay) {
           html += `<div class="date-sep"><span>${dateSeparatorLabel(m.created_at)}</span></div>`;
           lastDay = day;
         }
-        const groupedWithPrev = prev && prev.sender_id === m.sender_id && new Date(m.created_at) - new Date(prev.created_at) < 180000 && new Date(prev.created_at).toDateString() === day;
-        const groupedWithNext = next && next.sender_id === m.sender_id && new Date(next.created_at) - new Date(m.created_at) < 180000 && new Date(next.created_at).toDateString() === day;
+        const groupedWithPrev = prev && identity(prev) === identity(m) && new Date(m.created_at) - new Date(prev.created_at) < 180000 && new Date(prev.created_at).toDateString() === day;
+        const groupedWithNext = next && identity(next) === identity(m) && new Date(next.created_at) - new Date(m.created_at) < 180000 && new Date(next.created_at).toDateString() === day;
         const posClass = groupedWithPrev && groupedWithNext ? 'mid' : groupedWithPrev ? 'last' : groupedWithNext ? 'first' : 'solo';
+        const aligned = k !== 'customer'; // both "mine" and "colleague" sit on the support side, matching what the customer actually sees
         html += `
-          <div class="bubble-row ${mine ? 'mine' : ''} grp-${posClass}">
-            <div class="bubble ${mine ? 'bubble--mine' : 'bubble--theirs'}">${esc(m.body || '')}</div>
+          <div class="bubble-row ${aligned ? 'mine' : ''} grp-${posClass}">
+            ${k === 'colleague' && !groupedWithPrev ? `<div class="bubble-staff-label">${esc(m.sender_staff_name || 'Teammate')}</div>` : ''}
+            <div class="bubble bubble--${k}">${esc(m.body || '')}</div>
             ${!groupedWithNext ? `<div class="bubble-meta">
               <span class="bubble-time">${new Date(m.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</span>
-              ${mine ? statusTicks(m.status) : ''}
+              ${aligned ? statusTicks(m.status) : ''}
             </div>` : ''}
           </div>
         `;
@@ -287,6 +432,7 @@
     if (!CapApp) return; // web preview, or native module not linked yet
     CapApp.addListener('backButton', () => {
       if (currentView === 'thread') {
+        stopPresencePing();
         renderConversations();
       } else {
         CapApp.exitApp();
@@ -297,6 +443,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     wireBackButton();
     if (API.isLoggedIn()) {
+      startLiveUpdates();
       renderConversations();
       if (window.SupportPush) window.SupportPush.init();
     } else {
