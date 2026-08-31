@@ -212,6 +212,8 @@
     async sendMessage(recipientId, body, propertyId, senderName) {
       return ownerReq('/owner/messages', { method: 'POST', body: { recipient_id: recipientId, body, property_id: propertyId || null, sender_name: senderName || '' } });
     },
+    async editMessage(messageId, body) { return ownerReq('/owner/messages/' + messageId, { method: 'PATCH', body: { body } }); },
+    async deleteMessage(messageId) { return ownerReq('/owner/messages/' + messageId, { method: 'DELETE' }); },
     async registerPushToken(token) { return ownerReq('/owner/push-token', { method: 'POST', body: { push_token: token } }); },
 
     // In-app notification center

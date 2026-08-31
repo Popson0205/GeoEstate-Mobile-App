@@ -201,11 +201,16 @@
           : groupedWithPrev ? '4px 16px 16px 16px'
           : '16px 16px 16px 4px'; // first or solo
       }
+      const isEditable = mine && !m.deleted_at;
+      const bodyDisplay = m.deleted_at
+        ? '<span style="font-style:italic;color:var(--text-muted);opacity:0.75">This message was deleted</span>'
+        : esc(m.body || '');
       html += `
         <div style="align-self:${mine ? 'flex-end' : 'flex-start'};max-width:78%;display:flex;flex-direction:column;align-items:${mine ? 'flex-end' : 'flex-start'};margin-top:2px">
-          <div style="background:${mine ? 'var(--g-400)' : 'rgba(255,255,255,0.06)'};color:${mine ? '#06170d' : 'inherit'};padding:9px 13px;border-radius:${bubbleRadius};font-size:.87rem;line-height:1.4;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,0.15)">${esc(m.body || '')}</div>
+          <div class="chat-bubble" ${isEditable ? `data-msg-id="${m.id}" data-msg-body="${esc(m.body || '')}"` : ''} style="background:${mine ? 'var(--g-400)' : 'rgba(255,255,255,0.06)'};color:${mine ? '#06170d' : 'inherit'};padding:9px 13px;border-radius:${bubbleRadius};font-size:.87rem;line-height:1.4;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,0.15);${isEditable ? 'cursor:pointer;-webkit-touch-callout:none;user-select:none' : ''}">${bodyDisplay}</div>
           ${!groupedWithNext ? `<div class="flex items-center" style="gap:4px;margin-top:3px;padding:0 2px">
             <span class="text-xs text-muted">${new Date(m.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</span>
+            ${m.edited_at && !m.deleted_at ? '<span class="text-xs text-muted" style="font-style:italic">edited</span>' : ''}
             ${mine ? statusTicks(m.status) : ''}
           </div>` : ''}
         </div>
@@ -213,7 +218,10 @@
     }
     box.innerHTML = html;
     if (wasNearBottom) box.scrollTop = box.scrollHeight;
+    wireMessageLongPress(box);
   }
+
+  let editingMessageId = null;
 
   async function send() {
     const sheet = document.getElementById('active-sheet');
@@ -223,10 +231,23 @@
     if (!body) return;
     const otherId = sheet.dataset.otherId;
     const propertyId = sheet.dataset.propertyId;
+    input.disabled = true;
+    if (editingMessageId) {
+      const idBeingEdited = editingMessageId;
+      try {
+        await API.editMessage(idBeingEdited, body);
+        cancelEdit();
+        await loadThread();
+      } catch (e) {
+        toast('Could not save edit — check your connection', 'error');
+      }
+      input.disabled = false;
+      input.focus();
+      return;
+    }
     const user = API.getUser() || (API.getOwnerSession() || {}).owner;
     const senderName = user ? (user.fname + ' ' + (user.lname || '')).trim() : '';
     input.value = '';
-    input.disabled = true;
     try {
       await API.sendMessage(otherId, body, propertyId, senderName);
       await loadThread();
@@ -236,6 +257,100 @@
     }
     input.disabled = false;
     input.focus();
+  }
+
+  // ---- Edit / delete message flow ----
+  // Long-press (pointer events, so mouse works too during development) on
+  // any of my own bubbles opens a small action sheet — mirrors the
+  // standalone Support app's chat redesign so both feel like the same
+  // product, not two different apps bolted together.
+  function wireMessageLongPress(container) {
+    let pressTimer = null;
+    const LONG_PRESS_MS = 480;
+    function start(e) {
+      const bubble = e.target.closest('.chat-bubble[data-msg-id]');
+      if (!bubble) return;
+      pressTimer = setTimeout(() => showMessageActions(bubble.dataset.msgId, bubble.dataset.msgBody), LONG_PRESS_MS);
+    }
+    function cancel() { clearTimeout(pressTimer); }
+    container.addEventListener('pointerdown', start);
+    container.addEventListener('pointerup', cancel);
+    container.addEventListener('pointerleave', cancel);
+    container.addEventListener('pointercancel', cancel);
+    container.addEventListener('scroll', cancel);
+  }
+
+  function showMessageActions(messageId, currentBody) {
+    const el = document.createElement('div');
+    el.className = 'geo-action-sheet-backdrop';
+    el.innerHTML = `
+      <div class="geo-action-sheet">
+        <button class="geo-action-sheet-item" id="geo-act-edit">Edit</button>
+        <button class="geo-action-sheet-item geo-action-sheet-item--danger" id="geo-act-delete">Delete</button>
+        <button class="geo-action-sheet-item geo-action-sheet-item--cancel" id="geo-act-cancel">Cancel</button>
+      </div>
+    `;
+    document.body.appendChild(el);
+    const close = () => el.remove();
+    el.addEventListener('click', (e) => { if (e.target === el) close(); });
+    document.getElementById('geo-act-cancel').onclick = close;
+    document.getElementById('geo-act-edit').onclick = () => { close(); startEditMessage(messageId, currentBody); };
+    document.getElementById('geo-act-delete').onclick = () => { close(); showDeleteConfirm(messageId); };
+  }
+
+  function startEditMessage(messageId, currentBody) {
+    editingMessageId = messageId;
+    const input = document.getElementById('chat-input');
+    if (input) { input.value = currentBody; input.focus(); }
+    renderEditBanner();
+  }
+
+  function cancelEdit() {
+    editingMessageId = null;
+    const input = document.getElementById('chat-input');
+    if (input) input.value = '';
+    renderEditBanner();
+  }
+
+  function renderEditBanner() {
+    const existing = document.getElementById('geo-edit-banner');
+    if (existing) existing.remove();
+    if (!editingMessageId) return;
+    const box = document.getElementById('chat-messages');
+    if (!box) return;
+    const banner = document.createElement('div');
+    banner.id = 'geo-edit-banner';
+    banner.className = 'flex items-center justify-between';
+    banner.style.cssText = 'padding:8px 14px;font-size:12.5px;font-weight:600;background:var(--bg-card);color:var(--g-300);border-radius:10px;margin:0 4px 8px';
+    banner.innerHTML = `<span>Editing message</span><button id="geo-cancel-edit-btn" aria-label="Cancel edit" style="background:none;border:none;color:var(--text-secondary);font-size:15px;cursor:pointer;padding:2px 6px">\u2715</button>`;
+    box.parentNode.insertBefore(banner, box.nextSibling);
+    document.getElementById('geo-cancel-edit-btn').onclick = cancelEdit;
+  }
+
+  function showDeleteConfirm(messageId) {
+    const el = document.createElement('div');
+    el.className = 'geo-action-sheet-backdrop';
+    el.innerHTML = `
+      <div class="geo-action-sheet">
+        <div class="geo-action-sheet-warning">Delete this message? This can't be undone.</div>
+        <button class="geo-action-sheet-item geo-action-sheet-item--danger" id="geo-act-confirm-delete">Delete</button>
+        <button class="geo-action-sheet-item geo-action-sheet-item--cancel" id="geo-act-cancel-delete">Cancel</button>
+      </div>
+    `;
+    document.body.appendChild(el);
+    const close = () => el.remove();
+    el.addEventListener('click', (e) => { if (e.target === el) close(); });
+    document.getElementById('geo-act-cancel-delete').onclick = close;
+    document.getElementById('geo-act-confirm-delete').onclick = async () => {
+      close();
+      try {
+        if (editingMessageId === messageId) cancelEdit();
+        await API.deleteMessage(messageId);
+        await loadThread();
+      } catch (e) {
+        toast('Could not delete message', 'error');
+      }
+    };
   }
 
   window.GeoChat = { openConversationsList, openChatThread, closeThread, send };
