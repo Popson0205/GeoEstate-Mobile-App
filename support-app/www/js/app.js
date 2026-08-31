@@ -193,22 +193,40 @@
       API.logout();
       stopPolling();
       stopLiveUpdates();
+      hasLoadedConversationsOnce = false;
       renderLogin();
     };
     await loadConversations();
     pollTimer = setInterval(loadConversations, 15000);
   }
 
+  let hasLoadedConversationsOnce = false;
+
   async function loadConversations() {
     const list = document.getElementById('conv-list');
     if (!list) { stopPolling(); return; }
     try {
       conversationsCache = await API.getConversations();
+      hasLoadedConversationsOnce = true;
       renderConversationRows();
     } catch (e) {
-      // keep showing whatever was last loaded rather than clearing on a transient failure
+      // A failure on the very first load has nothing to fall back to
+      // showing - leaving the loading spinner in place forever looks like
+      // the app is frozen. Once something has loaded successfully at
+      // least once, a later transient failure (a dropped poll) can stay
+      // silent and just keep showing the last good state instead.
+      if (!hasLoadedConversationsOnce) {
+        list.innerHTML = `<div class="empty-state">
+          <div class="empty-icon">\u26a0\ufe0f</div>
+          <div class="empty-title">Couldn't load conversations</div>
+          <div class="empty-sub">${esc(e.message || 'Check your connection and try again.')}</div>
+          <button class="claim-btn" style="margin-top:14px" onclick="SupportApp.retryLoadConversations()">Retry</button>
+        </div>`;
+      }
     }
   }
+
+  function retryLoadConversations() { loadConversations(); }
 
   function renderConversationRows() {
     const list = document.getElementById('conv-list');
@@ -416,7 +434,7 @@
     input.focus();
   }
 
-  window.SupportApp = { openThread, send, toast };
+  window.SupportApp = { openThread, send, toast, retryLoadConversations };
 
   // ---- Back button / edge-swipe gesture ----
   // This is a single-page app with no browser history entries (screens are
