@@ -119,6 +119,12 @@
         presenceByCustomer[evt.customerId] = { staffId: evt.staffId, staffName: evt.staffName, ts: evt.ts };
         if (currentView === 'list') renderConversationRows();
         if (currentView === 'thread' && currentThread && currentThread.otherId === evt.customerId) renderThreadPresence();
+      },
+      (evt) => { // message_edited: { id, body, otherId } - reload if this thread is open
+        if (currentView === 'thread' && currentThread && currentThread.otherId === evt.otherId) loadThread();
+      },
+      (evt) => { // message_deleted: { id, otherId }
+        if (currentView === 'thread' && currentThread && currentThread.otherId === evt.otherId) loadThread();
       }
     );
   }
@@ -400,12 +406,22 @@
         const groupedWithNext = next && identity(next) === identity(m) && new Date(next.created_at) - new Date(m.created_at) < 180000 && new Date(next.created_at).toDateString() === day;
         const posClass = groupedWithPrev && groupedWithNext ? 'mid' : groupedWithPrev ? 'last' : groupedWithNext ? 'first' : 'solo';
         const aligned = k !== 'customer'; // both "mine" and "colleague" sit on the support side, matching what the customer actually sees
+        // Editable/deletable from this app: any support-side message
+        // (mine or a colleague's - the backend allows either, since all
+        // staff share one account), as long as it isn't already deleted.
+        // A customer's own message is never editable here regardless -
+        // the backend would reject it anyway (sender_id wouldn't match).
+        const isEditable = aligned && !m.deleted_at;
+        const bodyDisplay = m.deleted_at
+          ? '<span class="bubble-deleted">This message was deleted</span>'
+          : esc(m.body || '');
         html += `
           <div class="bubble-row ${aligned ? 'mine' : ''} grp-${posClass}">
             ${k === 'colleague' && !groupedWithPrev ? `<div class="bubble-staff-label">${esc(m.sender_staff_name || 'Teammate')}</div>` : ''}
-            <div class="bubble bubble--${k}">${esc(m.body || '')}</div>
+            <div class="bubble bubble--${k}" ${isEditable ? `data-msg-id="${m.id}" data-msg-body="${esc(m.body || '')}"` : ''}>${bodyDisplay}</div>
             ${!groupedWithNext ? `<div class="bubble-meta">
               <span class="bubble-time">${new Date(m.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</span>
+              ${m.edited_at && !m.deleted_at ? '<span class="bubble-edited">edited</span>' : ''}
               ${aligned ? statusTicks(m.status) : ''}
             </div>` : ''}
           </div>
@@ -413,16 +429,32 @@
       }
       box.innerHTML = html;
       if (wasNearBottom) box.scrollTop = box.scrollHeight;
+      wireMessageLongPress(box);
     } catch (e) { /* keep showing whatever loaded last */ }
   }
+
+  let editingMessageId = null;
 
   async function send() {
     if (!currentThread) return;
     const input = document.getElementById('thread-input');
     const body = input.value.trim();
     if (!body) return;
-    input.value = '';
     input.disabled = true;
+    if (editingMessageId) {
+      const idBeingEdited = editingMessageId;
+      try {
+        await API.editMessage(idBeingEdited, body);
+        cancelEdit();
+        await loadThread();
+      } catch (err) {
+        toast(err.message || 'Could not save edit', 'error');
+      }
+      input.disabled = false;
+      input.focus();
+      return;
+    }
+    input.value = '';
     try {
       await API.sendMessage(currentThread.otherId, body, currentThread.propertyId, 'GeoEstate Support');
       await loadThread();
@@ -432,6 +464,108 @@
     }
     input.disabled = false;
     input.focus();
+  }
+
+  // ---- Edit / delete message flow ----
+  // Long-press (touch-and-hold, matching WhatsApp/Telegram/iMessage
+  // convention) on any editable bubble opens a small action sheet. Uses
+  // pointer events rather than touch-specific ones so this also works with
+  // a mouse during development/testing, not just on a real device.
+  function wireMessageLongPress(container) {
+    let pressTimer = null;
+    let pressedEl = null;
+    const LONG_PRESS_MS = 480;
+
+    function start(e) {
+      const bubble = e.target.closest('.bubble[data-msg-id]');
+      if (!bubble) return;
+      pressedEl = bubble;
+      pressTimer = setTimeout(() => {
+        pressedEl = null;
+        showMessageActions(bubble.dataset.msgId, bubble.dataset.msgBody);
+      }, LONG_PRESS_MS);
+    }
+    function cancel() {
+      clearTimeout(pressTimer);
+      pressedEl = null;
+    }
+    container.addEventListener('pointerdown', start);
+    container.addEventListener('pointerup', cancel);
+    container.addEventListener('pointerleave', cancel);
+    container.addEventListener('pointercancel', cancel);
+    container.addEventListener('scroll', cancel);
+  }
+
+  function showMessageActions(messageId, currentBody) {
+    const sheet = document.createElement('div');
+    sheet.className = 'action-sheet-backdrop';
+    sheet.innerHTML = `
+      <div class="action-sheet">
+        <button class="action-sheet-item" id="act-edit">Edit</button>
+        <button class="action-sheet-item action-sheet-item--danger" id="act-delete">Delete</button>
+        <button class="action-sheet-item action-sheet-item--cancel" id="act-cancel">Cancel</button>
+      </div>
+    `;
+    document.body.appendChild(sheet);
+    const close = () => sheet.remove();
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
+    document.getElementById('act-cancel').onclick = close;
+    document.getElementById('act-edit').onclick = () => { close(); startEditMessage(messageId, currentBody); };
+    document.getElementById('act-delete').onclick = () => { close(); showDeleteConfirm(messageId); };
+  }
+
+  function startEditMessage(messageId, currentBody) {
+    editingMessageId = messageId;
+    const input = document.getElementById('thread-input');
+    if (input) { input.value = currentBody; input.focus(); }
+    renderEditBanner();
+  }
+
+  function cancelEdit() {
+    editingMessageId = null;
+    const input = document.getElementById('thread-input');
+    if (input) input.value = '';
+    renderEditBanner();
+  }
+
+  function renderEditBanner() {
+    const existing = document.getElementById('edit-banner');
+    if (existing) existing.remove();
+    if (!editingMessageId) return;
+    const inputRow = document.querySelector('.thread-input-row');
+    if (!inputRow) return;
+    const banner = document.createElement('div');
+    banner.id = 'edit-banner';
+    banner.className = 'edit-banner';
+    banner.innerHTML = `<span>Editing message</span><button id="cancel-edit-btn" aria-label="Cancel edit">\u2715</button>`;
+    inputRow.parentNode.insertBefore(banner, inputRow);
+    document.getElementById('cancel-edit-btn').onclick = cancelEdit;
+  }
+
+  function showDeleteConfirm(messageId) {
+    const sheet = document.createElement('div');
+    sheet.className = 'action-sheet-backdrop';
+    sheet.innerHTML = `
+      <div class="action-sheet">
+        <div class="action-sheet-warning">Delete this message? This can't be undone.</div>
+        <button class="action-sheet-item action-sheet-item--danger" id="act-confirm-delete">Delete</button>
+        <button class="action-sheet-item action-sheet-item--cancel" id="act-cancel-delete">Cancel</button>
+      </div>
+    `;
+    document.body.appendChild(sheet);
+    const close = () => sheet.remove();
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
+    document.getElementById('act-cancel-delete').onclick = close;
+    document.getElementById('act-confirm-delete').onclick = async () => {
+      close();
+      try {
+        if (editingMessageId === messageId) cancelEdit();
+        await API.deleteMessage(messageId);
+        await loadThread();
+      } catch (err) {
+        toast(err.message || 'Could not delete message', 'error');
+      }
+    };
   }
 
   window.SupportApp = { openThread, send, toast, retryLoadConversations };

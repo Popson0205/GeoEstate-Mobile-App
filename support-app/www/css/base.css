@@ -281,3 +281,45 @@ html, body {
 }
 .toast--show { opacity: 1; transform: translate(-50%, 0); }
 .toast--error { border-color: var(--red); color: #ffb3b5; }
+
+/* ---- Edit / delete messages ---- */
+.bubble-edited { font-size: 10.5px; color: var(--text-muted); font-style: italic; }
+.bubble-deleted { font-style: italic; color: var(--text-muted); opacity: 0.75; }
+.bubble[data-msg-id] { cursor: pointer; -webkit-touch-callout: none; user-select: none; }
+
+.edit-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; font-size: 12.5px; font-weight: 600;
+  background: var(--bg-card); color: var(--g-300);
+  border-bottom: 1px solid var(--border-soft);
+}
+.edit-banner button {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 15px; cursor: pointer; padding: 2px 6px;
+}
+
+.action-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.action-sheet {
+  width: 100%; max-width: 480px;
+  background: var(--bg-card);
+  border-radius: 16px 16px 0 0;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 2px;
+}
+.action-sheet-item {
+  background: none; border: none;
+  padding: 15px 8px; font-size: 16px; font-weight: 600;
+  color: var(--text-primary); text-align: center; cursor: pointer;
+  border-bottom: 1px solid var(--border-soft);
+}
+.action-sheet-item:last-child { border-bottom: none; }
+.action-sheet-item--danger { color: var(--red); }
+.action-sheet-item--cancel { color: var(--text-secondary); font-weight: 700; margin-top: 4px; }
+.action-sheet-warning {
+  padding: 10px 8px 16px; text-align: center;
+  font-size: 13.5px; color: var(--text-secondary); line-height: 1.5;
+}

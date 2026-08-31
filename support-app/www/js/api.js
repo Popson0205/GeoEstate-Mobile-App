@@ -69,6 +69,12 @@
     async sendMessage(recipientId, body, propertyId, senderName) {
       return req('/owner/messages', { method: 'POST', body: { recipient_id: recipientId, body, property_id: propertyId || null, sender_name: senderName || 'GeoEstate Support' } });
     },
+    async editMessage(messageId, body) {
+      return req('/owner/messages/' + messageId, { method: 'PATCH', body: { body } });
+    },
+    async deleteMessage(messageId) {
+      return req('/owner/messages/' + messageId, { method: 'DELETE' });
+    },
     async registerPushToken(token) {
       return req('/owner/push-token', { method: 'POST', body: { push_token: token } });
     },
@@ -89,13 +95,13 @@
       return req('/support/presence/ping', { method: 'POST', body: { customerId } }).catch(() => {});
     },
 
-    // ---- Live updates (claims + presence) ----
-    // One shared SSE connection for both event types — claim changes are
-    // rare but need to update the UI reliably; presence pings arrive every
-    // ~10s from every other staff member with a thread open, so this
-    // reconnects on drop rather than leaving the support app silently
-    // stale until the next manual refresh.
-    connectLiveUpdates(onClaimChanged, onPresence) {
+    // ---- Live updates (claims + presence + message edit/delete) ----
+    // One shared SSE connection for all event types — claim changes and
+    // edits/deletes are rare but need to update the UI reliably; presence
+    // pings arrive every ~10s from every other staff member with a thread
+    // open, so this reconnects on drop rather than leaving the support app
+    // silently stale until the next manual refresh.
+    connectLiveUpdates(onClaimChanged, onPresence, onMessageEdited, onMessageDeleted) {
       const session = getSession();
       if (!session) return () => {};
       let es = null;
@@ -108,6 +114,12 @@
         });
         es.addEventListener('support_presence', (e) => {
           try { onPresence(JSON.parse(e.data)); } catch (err) {}
+        });
+        es.addEventListener('message_edited', (e) => {
+          try { onMessageEdited && onMessageEdited(JSON.parse(e.data)); } catch (err) {}
+        });
+        es.addEventListener('message_deleted', (e) => {
+          try { onMessageDeleted && onMessageDeleted(JSON.parse(e.data)); } catch (err) {}
         });
         es.onerror = () => {
           es.close();
